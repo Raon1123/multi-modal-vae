@@ -84,31 +84,11 @@ def build_transform(configs):
     mean = IMAGENET_DEFAULT_MEAN
     std = IMAGENET_DEFAULT_STD
 
-    input_size_dict = {'MNIST': 28, 'CIFAR10': 32, 'CIFAR100': 32}
-    input_size = input_size_dict[dataset_name]
+    train_transform = []
+    train_transform.append(transforms.ToTensor())
+    train_transform.append(transforms.Normalize(mean, std))
+    train_transform = transforms.Compose(train_transform)
 
-    aa = 'rand-m9-mstd0.5-inc1'
-    train_interpolation = 'bicubic'
-    reprob = 0.25
-    remode = 'pixel'
-    recount = 1
-    color_jitter = 0.4
-
-    train_transform = create_transform(
-            input_size=input_size,
-            is_training=True,
-            color_jitter=color_jitter,
-            auto_augment=aa,
-            interpolation=train_interpolation,
-            re_prob=reprob,
-            re_mode=remode,
-            re_count=recount,
-            mean=mean,
-            std=std,
-        )
-    train_transform.transforms[0] = transforms.RandomCrop(
-                input_size, padding=4)
-    
     test_transform = []
     test_transform.append(transforms.ToTensor())
     test_transform.append(transforms.Normalize(mean, std))
