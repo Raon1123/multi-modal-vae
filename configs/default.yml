@@ -1,0 +1,27 @@
+seed: 42
+project: mmvae
+postfix: alpha
+
+DATA:
+  name: MNIST-SVHN
+  data_path: './data'
+  batch_size: 128
+  num_workers: 0
+  pin_memory: True
+
+MODEL:
+  name: MMVAE
+  pretrained: False
+  latent_dim: 128
+  hidden_layers: 2
+  
+OPTIMIZER:
+  name: Adam
+  epochs: 10
+  params:
+    lr: 0.001
+    weight_decay: 0.
+    
+LOGGING:
+  log_path: './logs'
+  save_path: './saves'
