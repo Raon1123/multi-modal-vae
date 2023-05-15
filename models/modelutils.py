@@ -21,9 +21,9 @@ def get_model(config):
         if dataset_name == 'MNIST':
             model = vae.MNISTVAE(model_configs)
         elif dataset_name == 'CIFAR10':
-            model = vae.CIFARVAE(model_configs, 10)
+            model = vae.CIFARVAE(model_configs)
         elif dataset_name == 'CIFAR100':
-            model = vae.CIFARVAE(model_configs, 100)
+            model = vae.CIFARVAE(model_configs)
         else:
             raise NotImplementedError('Model not implemented.')
 
