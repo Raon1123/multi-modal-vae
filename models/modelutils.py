@@ -20,10 +20,10 @@ def get_model(config):
         dataset_name = config['DATA']['name']
         if dataset_name == 'MNIST':
             model = vae.MNISTVAE(model_configs)
-        elif dataset_name == 'SVHN':
-            model = vae.SVHNVAE(model_configs)
-        elif dataset_name == 'MNIST-SVHN':
-            model = mmvae.MNISTSVHNMMVAE(model_configs)
+        elif dataset_name == 'CIFAR10':
+            model = vae.CIFARVAE(model_configs, 10)
+        elif dataset_name == 'CIFAR100':
+            model = vae.CIFARVAE(model_configs, 100)
         else:
             raise NotImplementedError('Model not implemented.')
 

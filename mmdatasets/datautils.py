@@ -5,18 +5,23 @@ import torch
 from torch.utils.data import DataLoader, Dataset, Subset
 from torchvision import datasets, transforms
 
+from timm.data.constants import \
+    IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD, IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD
+from timm.data import create_transform
 
 def get_dataset(configs):
     data_config = configs['DATA']
     dataset_name = data_config['name']
     data_path = data_config['data_path']
 
+    train_transform, test_transform = build_transform(data_config)
+
     if dataset_name == 'MNIST':
-        train_dataset, test_dataset = get_mnist(data_path)
-    elif dataset_name == 'SVHN':
-        train_dataset, test_dataset = get_svhn(data_path)
-    elif dataset_name == 'MNIST-SVHN':
-        train_dataset, test_dataset = get_mnist_svhn(configs)
+        train_dataset, test_dataset = get_mnist(data_path, train_transform, test_transform)
+    elif dataset_name == 'CIFAR10':
+        train_dataset, test_dataset = get_cifar(data_path, 10, train_transform, test_transform)
+    elif dataset_name == 'CIFAR100':
+        train_dataset, test_dataset = get_cifar(data_path, 100, train_transform, test_transform)
     else:
         raise NotImplementedError('Dataset not implemented.')
     
@@ -39,7 +44,6 @@ def get_dataloader(configs):
     
     return train_loader, test_loader
 
-
 def rand_match_on_idx(l1, idx1, l2, idx2, max_d=10000, dm=10):
     """
     l*: sorted labels
@@ -55,103 +59,59 @@ def rand_match_on_idx(l1, idx1, l2, idx2, max_d=10000, dm=10):
             _idx2.append(l_idx2[torch.randperm(n)])
     return torch.cat(_idx1), torch.cat(_idx2)
 
-
-def mnist_svhn(configs):
-    max_d = 10000  # maximum number of datapoints per class
-    dm = 30        # data multiplier: random permutations to match
-    data_path = configs['DATA']['data_path']
-
-    # get the individual datasets
-    tx = transforms.ToTensor()
-    train_mnist = datasets.MNIST(data_path, train=True, download=True, transform=tx)
-    test_mnist = datasets.MNIST(data_path, train=False, download=True, transform=tx)
-    train_svhn = datasets.SVHN(data_path, split='train', download=True, transform=tx)
-    test_svhn = datasets.SVHN(data_path, split='test', download=True, transform=tx)
-
-    train_svhn.labels = torch.LongTensor(train_svhn.labels.squeeze()) % 10
-    test_svhn.labels = torch.LongTensor(test_svhn.labels.squeeze()) % 10
-
-    # svhn labels need extra work
-    train_svhn.labels = torch.LongTensor(train_svhn.labels.squeeze()) % 10
-    test_svhn.labels = torch.LongTensor(test_svhn.labels.squeeze()) % 10
-
-    mnist_l, mnist_li = train_mnist.targets.sort()
-    svhn_l, svhn_li = train_svhn.labels.sort()
-    idx1, idx2 = rand_match_on_idx(mnist_l, mnist_li, svhn_l, svhn_li, max_d=max_d, dm=dm)
-    print('len train idx:', len(idx1), len(idx2))
-    
-    train_mnist_path = os.path.join(data_path, 'train-ms-mnist-idx.pt')
-    train_svhn_path = os.path.join(data_path, 'train-ms-svhn-idx.pt')
-    torch.save(idx1, train_mnist_path)
-    torch.save(idx2, train_svhn_path)
-
-    mnist_l, mnist_li = test_mnist.targets.sort()
-    svhn_l, svhn_li = test_svhn.labels.sort()
-    idx1, idx2 = rand_match_on_idx(mnist_l, mnist_li, svhn_l, svhn_li, max_d=max_d, dm=dm)
-    print('len test idx:', len(idx1), len(idx2))
-    
-    test_mnist_path = os.path.join(data_path, 'test-ms-mnist-idx.pt')
-    test_svhn_path = os.path.join(data_path, 'test-ms-svhn-idx.pt')
-    torch.save(idx1, test_mnist_path)
-    torch.save(idx2, test_svhn_path)
-
-
-def get_mnist(data_path):
+def get_mnist(data_path, train_transform, test_transform):
     train_dataset = datasets.MNIST(data_path, train=True, download=True,
-                                        transform=transforms.ToTensor())
+                                        transform=train_transform)
     test_dataset = datasets.MNIST(data_path, train=False, download=True,
-                                        transform=transforms.ToTensor())
+                                        transform=test_transform)
     return train_dataset, test_dataset
 
-
-def get_svhn(data_path):
-    train_dataset = datasets.SVHN(data_path, split='train', download=True,
-                                        transform=transforms.ToTensor())
-    test_dataset = datasets.SVHN(data_path, split='test', download=True,
-                                        transform=transforms.ToTensor())
+def get_cifar(data_path, n_class, train_transform, test_transform):
+    if n_class == 10:
+        train_dataset = datasets.CIFAR10(data_path, train=True, download=True,
+                                        transform=train_transform)
+        test_dataset = datasets.CIFAR10(data_path, train=False, download=True,
+                                            transform=test_transform)
+    else:
+        train_dataset = datasets.CIFAR100(data_path, train=True, download=True,
+                                        transform=train_transform)
+        test_dataset = datasets.CIFAR100(data_path, train=False, download=True,
+                                            transform=test_transform)
     return train_dataset, test_dataset
 
-class MNISTSVHN(Dataset):
-    def __init__(self, mnist, svhn):
-        super().__init__()
+def build_transform(configs):
+    dataset_name = configs['name']
+    mean = IMAGENET_DEFAULT_MEAN
+    std = IMAGENET_DEFAULT_STD
 
-        self.mnist = mnist
-        self.svhn = svhn
+    input_size_dict = {'MNIST': 28, 'CIFAR10': 32, 'CIFAR100': 32}
+    input_size = input_size_dict[dataset_name]
 
-    def __len__(self):
-        return len(self.mnist) 
+    aa = 'rand-m9-mstd0.5-inc1'
+    train_interpolation = 'bicubic'
+    reprob = 0.25
+    remode = 'pixel'
+    recount = 1
+    color_jitter = 0.4
+
+    train_transform = create_transform(
+            input_size=input_size,
+            is_training=True,
+            color_jitter=color_jitter,
+            auto_augment=aa,
+            interpolation=train_interpolation,
+            re_prob=reprob,
+            re_mode=remode,
+            re_count=recount,
+            mean=mean,
+            std=std,
+        )
+    train_transform.transforms[0] = transforms.RandomCrop(
+                input_size, padding=4)
     
-    def __getitem__(self, idx):
-        return self.mnist[idx], self.svhn[idx]
+    test_transform = []
+    test_transform.append(transforms.ToTensor())
+    test_transform.append(transforms.Normalize(mean, std))
+    test_transform = transforms.Compose(test_transform)
 
-
-def get_mnist_svhn(configs):
-    data_path = configs['DATA']['data_path']
-
-    train_mnist_path = os.path.join(data_path, 'train-ms-mnist-idx.pt')
-    train_svhn_path = os.path.join(data_path, 'train-ms-svhn-idx.pt')
-    test_mnist_path = os.path.join(data_path, 'test-ms-mnist-idx.pt')
-    test_svhn_path = os.path.join(data_path, 'test-ms-svhn-idx.pt')
-    if not (os.path.exists(train_mnist_path) and
-            os.path.exists(train_svhn_path) and
-            os.path.exists(test_mnist_path) and
-            os.path.exists(test_svhn_path)):
-        mnist_svhn(configs)
-    
-    train_mnist = torch.load(train_mnist_path)
-    train_svhn = torch.load(train_svhn_path)
-    test_mnist = torch.load(test_mnist_path)
-    test_svhn = torch.load(test_svhn_path)
-
-    train_mnist_dataset, test_mnist_dataset = get_mnist(data_path)
-    train_svhn_dataset, test_svhn_dataset = get_svhn(data_path)
-
-    train_mnist_dataset = Subset(train_mnist_dataset, train_mnist)
-    train_svhn_dataset = Subset(train_svhn_dataset, train_svhn)
-    test_mnist_dataset = Subset(test_mnist_dataset, test_mnist)
-    test_svhn_dataset = Subset(test_svhn_dataset, test_svhn)
-
-    train_mnist_svhn = MNISTSVHN(train_mnist_dataset, train_svhn_dataset)
-    test_mnist_svhn = MNISTSVHN(test_mnist_dataset, test_svhn_dataset)
-
-    return train_mnist_svhn, test_mnist_svhn
+    return train_transform, test_transform

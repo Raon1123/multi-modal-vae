@@ -194,69 +194,14 @@ class MNISTVAE(VAE):
         logging.plot_embeddings(z_emb, zsl, labels, '{}/emb_umap_{:03d}.png'.format(run_path, epoch))
         logging.plot_kls_df(kls_df, '{}/kldistance_{:03d}.png'.format(run_path, epoch))
 
-
-class SVHNEncoder(nn.Module):
-    def __init__(self, latent_dim) -> None:
-        super(SVHNEncoder, self).__init__()
-
-        # input shape: 3 x 32 x 
-        self.encoder = nn.Sequential(
-            nn.Conv2d(3, 32, 4, 2, 1, bias=True),
-            nn.ReLU(True),
-            nn.Conv2d(32, 64, 4, 2, 1, bias=True),
-            nn.ReLU(True),
-            nn.Conv2d(64, 128, 4, 2, 1, bias=True),
-            nn.ReLU(True),
-        )
-        # encoder output (128, 4, 4)
-
-        self.c1 = nn.Conv2d(128, latent_dim, 4, 1, 0, bias=True)
-        self.c2 = nn.Conv2d(128, latent_dim, 4, 1, 0, bias=True)
-
-    def forward(self, x):
-        enc = self.encoder(x)
-        mu = self.c1(enc).squeeze()
-        logvar = self.c2(enc).squeeze()
-        logvar = F.softmax(logvar, dim=-1) * logvar.size(-1) + 1e-6
-
-        return mu, logvar
-
-
-class SVHNDecoder(nn.Module):
-    def __init__(self, latent_dim) -> None:
-        super(SVHNDecoder, self).__init__()
-
-        # input shape (latent_dim, 1, 1)
-        self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(latent_dim, 128, 4, 1, 0, bias=True),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(128, 64, 4, 2, 1, bias=True),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(64, 32, 4, 2, 1, bias=True),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(32, 3, 4, 2, 1, bias=True),
-            nn.Sigmoid()
-        )
-        # decoder output (3, 32, 32)
-
-    def forward(self, z):
-        z = z.unsqueeze(-1).unsqueeze(-1)
-        out = self.decoder(z.view(-1, *z.size()[-3:]))
-        out = out.view(*z.size()[:-3], *out.size()[1:])
-
-        length_scale = torch.tensor(0.75).to(z.device)
-
-        return out, length_scale
-
-
-class SVHNVAE(VAE):
-    def __init__(self, params, learn_prior=False) -> None:
-        super(SVHNVAE, self).__init__(
+class CIFARVAE(VAE):
+    def __init__(self, params, n_class=10):
+        super().__init__(
             prior_dist=torch.distributions.Laplace,
             likelihood_dist=torch.distributions.Laplace,
             posterior_dist=torch.distributions.Laplace,
-            encoder=SVHNEncoder(params['latent_dim']),
-            decoder=SVHNDecoder(params['latent_dim']),
+            encoder=CIFAREncoder(params['latent_dim'], params['hidden_layers']),
+            decoder=CIFARDecoder(params['latent_dim'], params['hidden_layers']),
             params=params
         )
 
@@ -265,8 +210,8 @@ class SVHNVAE(VAE):
             nn.Parameter(torch.ones(1, params['latent_dim']), requires_grad=params['learn_prior']) # logvar
         ])
 
-        self.modelname = 'svhn_vae'
-        self.data_size = torch.tensor([3, 32, 32])
+        self.modelname = 'cifar_vae'
+        self.data_size = torch.tensor([1, 28, 28])
         self.scaling_factor = 1.0
 
     @property
@@ -275,21 +220,59 @@ class SVHNVAE(VAE):
     
     def generate(self, run_path, epoch):
         N, K = 64, 9
-        samples = super(SVHNVAE, self).generate(N, K).cpu()
+        samples = super(CIFARVAE, self).generate(N, K).cpu()
 
-        samples = samples.view(K, N, *samples.size()[1:]).transpose(0, 1)
+        samples = samples.view(K, N, *samples.size()[1:]).transpose(0, 1)  # N x K x 1 x 28 x 28
         s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
         save_image(torch.stack(s),
-                     '{}/gen_samples_{:03d}.png'.format(run_path, epoch),
-                        nrow=int(np.sqrt(N)))
-        
+                   '{}/gen_samples_{:03d}.png'.format(run_path, epoch),
+                   nrow=int(np.sqrt(N)))
+
     def reconstruct(self, x, run_path, epoch):
-        recon = super(SVHNVAE, self).reconstruct(x[:8])
+        recon = super(CIFARVAE, self).reconstruct(x[:8])
         comp = torch.cat([x[:8], recon]).data.cpu()
         save_image(comp, '{}/recon_{:03d}.png'.format(run_path, epoch))
 
     def analyse(self, x, run_path, epoch):
-        z_emb, zsl, kls_df = super(SVHNVAE, self).analyse(x, K=10)
+        z_emb, zsl, kls_df = super(CIFARVAE, self).analyse(x, K=10)
         labels = ['Prior', self.modelname.lower()]
         logging.plot_embeddings(z_emb, zsl, labels, '{}/emb_umap_{:03d}.png'.format(run_path, epoch))
         logging.plot_kls_df(kls_df, '{}/kldistance_{:03d}.png'.format(run_path, epoch))
+
+class CIFAREncoder(nn.Module):
+    def __init__(self, latent_dim, hidden_layers=1, hidden_dim=400) -> None:
+        super().__init__()
+        
+        modules = []
+        modules.append(nn.Sequential(nn.Linear(3072, hidden_dim), nn.ReLU(True)))
+        for _ in range(hidden_layers-1):
+            modules.append(nn.Sequential(nn.Linear(hidden_dim, hidden_dim), nn.ReLU(True)))
+        self.encoder = nn.Sequential(*modules)
+        self.fc_mu = nn.Linear(hidden_dim, latent_dim)
+        self.fc_var = nn.Linear(hidden_dim, latent_dim)
+
+    def forward(self, x):
+        emb = self.encoder(x.view(*x.size()[:-3], -1))
+        mu = self.fc_mu(emb)
+        logvar = self.fc_var(emb)
+        logvar = F.softmax(logvar, dim=-1) * logvar.size(-1) + 1e-6
+        return mu, logvar
+    
+
+class CIFARDecoder(nn.Module):
+    def __init__(self, latent_dim, hidden_layers, hidden_dim=400) -> None:
+        super().__init__()
+
+        modules = []
+        modules.append(nn.Sequential(nn.Linear(latent_dim, hidden_dim), nn.ReLU(True)))
+        for _ in range(hidden_layers-1):
+            modules.append(nn.Sequential(nn.Linear(hidden_dim, hidden_dim), nn.ReLU(True)))
+        self.decoder = nn.Sequential(*modules)
+        self.fc = nn.Linear(hidden_dim, 3072)
+
+    def forward(self, z):
+        p = self.fc(self.decoder(z))
+        d = torch.sigmoid(p.view(*p.size()[:-1], 3, 32, 32))
+        d = d.clamp(1e-6, 1-1e-6)
+
+        return d, torch.tensor(0.75).to(z.device) # return mean and length scale
