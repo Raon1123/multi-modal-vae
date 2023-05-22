@@ -10,6 +10,12 @@ In this project, we implement [Multi-Modal VAE](https://arxiv.org/abs/1911.03393
 conda install --file packagelist.txt
 ```
 
+# How to run
+
+```bash
+python main.py --configs <config_path_here>
+```
+
 # Configs
 
 - `Data`,`name`: choice of `[MNIST, SVHN, MNIST-SVHN]`
