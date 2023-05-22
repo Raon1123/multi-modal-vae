@@ -6,6 +6,9 @@ In this project, we implement [Multi-Modal VAE](https://arxiv.org/abs/1911.03393
 # Requirements
 
 - [UMAP](https://umap-learn.readthedocs.io/en/latest/) for visualize results.
+```bash
+conda install --file packagelist.txt
+```
 
 # Configs
 
