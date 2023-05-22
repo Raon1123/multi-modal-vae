@@ -204,7 +204,7 @@ def _iwae(model, x, K):
     """IWAE estimate for log p_\theta(x) -- fully vectorised."""
     qz_x, px_z, zs = model(x, K)
     lpz = model.pz(*model.pz_params).log_prob(zs).sum(-1)
-    lpx_z = px_z.log_prob(x).view(*px_z.batch_shape[:2], -1) * model.llik_scaling
+    lpx_z = px_z.log_prob(x).view(*px_z.batch_shape[:2], -1) * model.scaling_factor
     lqz_x = qz_x.log_prob(zs).sum(-1)
     return lpz + lpx_z.sum(-1) - lqz_x
 
@@ -222,7 +222,7 @@ def _dreg(model, x, K):
     """DREG estimate for log p_\theta(x) -- fully vectorised."""
     _, px_z, zs = model(x, K)
     lpz = model.pz(*model.pz_params).log_prob(zs).sum(-1)
-    lpx_z = px_z.log_prob(x).view(*px_z.batch_shape[:2], -1) * model.llik_scaling
+    lpx_z = px_z.log_prob(x).view(*px_z.batch_shape[:2], -1) * model.scaling_factor
     qz_x = model.qz_x(*[p.detach() for p in model.qz_x_params])  # stop-grad for \phi
     lqz_x = qz_x.log_prob(zs).sum(-1)
     lw = lpz + lpx_z.sum(-1) - lqz_x
