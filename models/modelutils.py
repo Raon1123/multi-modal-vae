@@ -1,7 +1,6 @@
 import torch
 
 import models.vae as vae
-import models.mmvae as mmvae
 
 def load_model(loading_path):
     model = torch.load(loading_path)
@@ -22,8 +21,6 @@ def get_model(config):
             model = vae.MNISTVAE(model_configs)
         elif dataset_name == 'SVHN':
             model = vae.SVHNVAE(model_configs)
-        elif dataset_name == 'MNIST-SVHN':
-            model = mmvae.MNISTSVHNMMVAE(model_configs)
         else:
             raise NotImplementedError('Model not implemented.')
 
