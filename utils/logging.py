@@ -94,7 +94,11 @@ def log_scalars(writer, train_loss, test_loss, epoch):
 
 
 def save_model(model, config):
+    save_dir = config['LOGGING']['save_path']
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+        
     log_str = exp_str(config)
-    save_path = os.path.join(config['LOGGING']['save_path'], log_str + '.pt')
+    save_path = os.path.join(save_dir, log_str + '.pt')
 
     torch.save(model.state_dict(), save_path)

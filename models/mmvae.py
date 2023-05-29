@@ -11,7 +11,7 @@ from umap import UMAP
 
 import utils.logging as logging
 from utils.criteria import kl_divergence
-from models.vae import MNISTVAE, SVHNVAE
+from models.vae import MNISTVAE
 
 def tensor_to_df(tensor, ax_names=None):
     assert tensor.ndim == 2, "Can only currently convert 2D tensors to dataframes"
@@ -113,47 +113,3 @@ class MMVAE(nn.Module):
 
         return ret, torch.cat(zsl, 0).cpu().numpy(), kls_df
             
-
-class MNISTSVHNMMVAE(MMVAE):
-    def __init__(self, params):
-        super(MNISTSVHNMMVAE, self).__init__(torch.distributions.Laplace, params, MNISTVAE, SVHNVAE)
-        
-        self._pz_params = nn.ParameterList([
-            nn.Parameter(torch.zeros(1, params['latent_dim']), requires_grad=False), # mu
-            nn.Parameter(torch.ones(1, params['latent_dim']), requires_grad=params['learn_prior']) # logvar
-        ])
-
-        self.modelname = 'mnist-svhn'
-
-    @property
-    def pz_params(self):
-        return self._pz_params[0], F.softmax(self._pz_params[1], dim=-1) * self._pz_params[1].size(-1)
-    
-    def generate(self, run_path, epoch):
-        N = 64
-        samples_list = super(MNISTSVHNMMVAE, self).generate(N)
-        for i, samples in enumerate(samples_list):
-            samples = samples.data.cpu()
-            samples = samples.view(N, *samples.size()[1:])
-            save_image(samples, run_path + '/generated_{}_{}.png'.format(self.modulename, i), nrow=8)
-
-    def reconstruct(self, x, run_path, epoch):
-        recons_mat = super(MNISTSVHNMMVAE, self).reconstruct([d[:8] for d in x])
-        for r, recons in enumerate(recons_mat):
-            for o, recon in enumerate(recons):
-                _data = x[r][:8].cpu()
-                recon = recon.squeeze(0).cpu()
-
-                _data = _data if r == 1 else resize_img(_data, self.vaes[1].data_size)
-                recon = recon if o == 1 else resize_img(recon, self.vaes[1].data_size)
-                comp = torch.cat([_data, recon])
-                save_image(comp, '{}/recon_{}x{}_{:03d}.png'.format(run_path, r, o, epoch))
-
-    def analyse(self, x, run_path, epoch):
-        z_emb, zsl, kls_df = super(MNISTSVHNMMVAE, self).analyse(x, K=10)
-        labels = ['Prior', self.modelname.lower()]
-        logging.plot_embeddings(z_emb, zsl, labels, '{}/emb_umap_{:03d}.png'.format(run_path, epoch))
-        logging.plot_kls_df(kls_df, '{}/kldistance_{:03d}.png'.format(run_path, epoch))
-
-def resize_img(img, refsize):
-    return F.pad(img, (2, 2, 2, 2)).expand(img.size(0), *refsize)
