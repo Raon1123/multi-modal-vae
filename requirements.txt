@@ -7,6 +7,5 @@ six
 pandas
 umap-learn
 tensorboard
-tensorboardX
 seaborn
 scikit-image
