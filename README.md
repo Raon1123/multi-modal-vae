@@ -9,6 +9,7 @@ In this project, we implement [Multi-Modal VAE](https://arxiv.org/abs/1911.03393
 - Install dependent packages
 ``` shell
 pip install -r requirements.txt
+```
 
 # Configs
 
