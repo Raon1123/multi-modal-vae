@@ -1,7 +1,6 @@
 import torch
 
 import models.vae as vae
-import models.mmvae as mmvae
 
 def load_model(loading_path):
     model = torch.load(loading_path)
