@@ -194,10 +194,9 @@ class MNISTVAE(VAE):
         logging.plot_embeddings(z_emb, zsl, labels, '{}/emb_umap_{:03d}.png'.format(run_path, epoch))
         logging.plot_kls_df(kls_df, '{}/kldistance_{:03d}.png'.format(run_path, epoch))
 
-
-class SVHNEncoder(nn.Module):
+class CIFAREncoder(nn.Module):
     def __init__(self, latent_dim) -> None:
-        super(SVHNEncoder, self).__init__()
+        super(CIFAREncoder, self).__init__()
 
         # input shape: 3 x 32 x 
         self.encoder = nn.Sequential(
@@ -222,9 +221,9 @@ class SVHNEncoder(nn.Module):
         return mu, logvar
 
 
-class SVHNDecoder(nn.Module):
+class CIFARDecoder(nn.Module):
     def __init__(self, latent_dim) -> None:
-        super(SVHNDecoder, self).__init__()
+        super(CIFARDecoder, self).__init__()
 
         # input shape (latent_dim, 1, 1)
         self.decoder = nn.Sequential(
@@ -249,14 +248,14 @@ class SVHNDecoder(nn.Module):
         return out, length_scale
 
 
-class SVHNVAE(VAE):
+class CIFARVAE(VAE):
     def __init__(self, params, learn_prior=False) -> None:
-        super(SVHNVAE, self).__init__(
+        super(CIFARVAE, self).__init__(
             prior_dist=torch.distributions.Laplace,
             likelihood_dist=torch.distributions.Laplace,
             posterior_dist=torch.distributions.Laplace,
-            encoder=SVHNEncoder(params['latent_dim']),
-            decoder=SVHNDecoder(params['latent_dim']),
+            encoder=CIFAREncoder(params['latent_dim']),
+            decoder=CIFARDecoder(params['latent_dim']),
             params=params
         )
 
@@ -265,7 +264,7 @@ class SVHNVAE(VAE):
             nn.Parameter(torch.ones(1, params['latent_dim']), requires_grad=params['learn_prior']) # logvar
         ])
 
-        self.modelname = 'svhn_vae'
+        self.modelname = 'cifar_vae'
         self.data_size = torch.tensor([3, 32, 32])
         self.scaling_factor = 1.0
 
@@ -275,7 +274,7 @@ class SVHNVAE(VAE):
     
     def generate(self, run_path, epoch):
         N, K = 64, 9
-        samples = super(SVHNVAE, self).generate(N, K).cpu()
+        samples = super(CIFARVAE, self).generate(N, K).cpu()
 
         samples = samples.view(K, N, *samples.size()[1:]).transpose(0, 1)
         s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
@@ -284,12 +283,12 @@ class SVHNVAE(VAE):
                         nrow=int(np.sqrt(N)))
         
     def reconstruct(self, x, run_path, epoch):
-        recon = super(SVHNVAE, self).reconstruct(x[:8])
+        recon = super(CIFARVAE, self).reconstruct(x[:8])
         comp = torch.cat([x[:8], recon]).data.cpu()
         save_image(comp, '{}/recon_{:03d}.png'.format(run_path, epoch))
 
     def analyse(self, x, run_path, epoch):
-        z_emb, zsl, kls_df = super(SVHNVAE, self).analyse(x, K=10)
+        z_emb, zsl, kls_df = super(CIFARVAE, self).analyse(x, K=10)
         labels = ['Prior', self.modelname.lower()]
         logging.plot_embeddings(z_emb, zsl, labels, '{}/emb_umap_{:03d}.png'.format(run_path, epoch))
         logging.plot_kls_df(kls_df, '{}/kldistance_{:03d}.png'.format(run_path, epoch))
