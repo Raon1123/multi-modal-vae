@@ -1,0 +1,29 @@
+seed: 42
+project: vae
+postfix: alpha
+
+DATA:
+  name: MNIST
+  data_path: './data'
+  batch_size: 128
+  num_workers: 0
+  pin_memory: True
+
+MODEL:
+  name: VAE
+  pretrained: False
+  latent_dim: 128
+  hidden_layers: 2
+  learn_prior: True
+  
+OPTIMIZER:
+  name: Adam
+  epochs: 10
+  params:
+    lr: 0.001
+    weight_decay: 0.
+    
+LOGGING:
+  logger: 'wandb'
+  log_path: './logs'
+  save_path: './saves'

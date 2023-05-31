@@ -1,0 +1,28 @@
+seed: 42
+project: vae
+postfix: alpha
+LOGGING:
+  logger: 'tb'
+  log_path: './logs'
+  save_path: './saves'
+OPTIMIZER:
+  epochs: 100
+DATA:
+  name: 'CIFAR10'
+  data_path: data/cifar10
+  batch_size: 32
+  num_workers: 4
+  pin_memory: True
+MODEL:
+  name: VAE
+  pretrained: False
+  pretrain_path: ''
+  latent_dim: 64
+  hidden_layers: 3
+  learn_prior: False
+OPTIMIZER:
+  name: 'adam'
+  epochs: 10
+  params:
+    lr: 1.0e-3
+    weight_decay: 0
