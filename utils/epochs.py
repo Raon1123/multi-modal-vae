@@ -31,7 +31,7 @@ def train_epoch(train_loader, model, optimizer, objective, device='cpu', K=20):
     for data in train_loader:
         data = unpack_data(data, device=device)
         optimizer.zero_grad()
-        loss = -objective(model, data, K=K)
+        loss = objective(model, data, K=K)
         loss.backward()
         train_loss += loss.item()
         optimizer.step()
@@ -46,7 +46,7 @@ def test_epoch(test_loader, model, objective, device='cpu', K=20):
     with torch.no_grad():
         for data in test_loader:
             data = unpack_data(data, device=device)
-            loss = -objective(model, data, K=K)
+            loss = objective(model, data, K=K)
             test_loss += loss.item()
 
     test_loss /= len(test_loader.dataset)
