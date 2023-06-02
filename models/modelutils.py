@@ -1,6 +1,7 @@
 import torch
 
-import models.vae as vae
+from models.vae import MNISTVAE, CIFARVAE
+from models.cvae import MNISTCVAE, CIFARCVAE
 
 def load_model(loading_path):
     model = torch.load(loading_path)
@@ -10,22 +11,23 @@ def load_model(loading_path):
 def get_model(config):
     model_configs = config['MODEL']
 
+    model_name_dict = {'CIFAR10VAE': CIFARVAE, 
+                       'CIFAR100VAE': CIFARVAE, 
+                       'MNISTVAE': MNISTVAE,
+                       'MNISTCVAE': MNISTCVAE,
+                       'CIFAR10CVAE': CIFARCVAE,
+                       'CIFAR100CVAE': CIFARCVAE}
+
     if model_configs['pretrained']:
         try:
             model = load_model(model_configs['pretrain_path'])
         except:
             raise ValueError('Pretrained model not found.')
     else:
+        model_name = model_configs['name']
         dataset_name = config['DATA']['name']
-        if dataset_name == 'MNIST':
-            model = vae.MNISTVAE(model_configs)
-        elif dataset_name == 'CIFAR10':
-            model = vae.CIFARVAE(model_configs)
-        elif dataset_name == 'CIFAR100':
-            model = vae.CIFARVAE(model_configs)
-        else:
-            raise NotImplementedError('Model not implemented.')
-
+        model_class = model_name_dict[f"{dataset_name}{model_name}"]
+        model = model_class(model_configs)
     return model
 
 
@@ -43,3 +45,8 @@ def get_optimizer(model, config):
 
     return optimizer
 
+def get_classifier(config):
+    model_path = config['MODEL']['classifier_path']
+
+    model = torch.load(model_path)
+    return model

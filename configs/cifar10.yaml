@@ -5,19 +5,17 @@ LOGGING:
   logger: 'tb'
   log_path: './logs'
   save_path: './saves'
-OPTIMIZER:
-  epochs: 100
 DATA:
   name: 'CIFAR10'
   data_path: data/cifar10
-  batch_size: 32
+  batch_size: 128
   num_workers: 4
   pin_memory: True
 MODEL:
   name: VAE
   pretrained: False
   pretrain_path: ''
-  latent_dim: 64
+  latent_dim: 128
   hidden_layers: 3
   learn_prior: False
 OPTIMIZER:

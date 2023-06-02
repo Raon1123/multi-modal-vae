@@ -2,6 +2,7 @@ import math
 
 import torch
 import numpy as np
+import torch.nn.functional as F
 
 """
 The most implementation of criteria from MMVAE official implementation
@@ -20,17 +21,49 @@ def get_criteria(config):
     if model_name == 'vae':
         criteria = elbo
         t_criteria = iwae
+    elif model_name == 'cvae':
+        criteria = cvae_objective_wrapper
+        t_criteria = iwae_c
     else:
         raise NotImplementedError('Model criteria not implemented.')
 
     return criteria, t_criteria
 
+# aux_objective: auxiliary objective loss type. 'cls' for classification, 'entropy' for Shannon entropy
+def cvae_objective_wrapper(model, data, K=1, aux_objective='cls_max', classifier=None):
+    x, c = data
+    # elbo
+    qz_x, px_z, _ = model(x, c, K)
 
-def elbo(model, x, K=1):
+    lpx_z = px_z.log_prob(x).view(*px_z.batch_shape[:2], -1) * model.scaling_factor
+    kld = kl_divergence(qz_x, model.pz(*model.pz_params))
+    elbo_loss = -(lpx_z.sum(-1) - kld.sum(-1)).mean(0).sum()
+
+    # auxiliary objective
+    aux_loss = torch.zeros(1, dtype=torch.float32, device=x.device)
+    if aux_objective != '' and classifier is not None:
+        samples = px_z.sample(torch.Size([K]))
+        samples = samples.view(-1, *samples.size()[3:])
+        
+        cls_output = classifier(samples)
+        logit = F.softmax(cls_output, dim=1)
+        if aux_objective=='cls_min': # cross entropy minimization
+            target = c.repeat(K)
+            aux_loss = aux_loss + F.cross_entropy(logit, target, reduction='mean')
+        elif aux_objective=='cls_max': # cross entropy maximization
+            target = c.repeat(K)
+            aux_loss =  aux_loss - F.cross_entropy(logit, target, reduction='mean')
+        elif aux_objective=='entropy': # entropy maximization
+            aux_loss = aux_loss + torch.sum(logit * torch.log(logit + 1e-4), dim=1).mean()
+        
+    total_loss = elbo_loss + aux_loss
+    return total_loss
+
+def elbo(model, x, K=1, **args):
     qz_x, px_z, _ = model(x, K)
     lpx_z = px_z.log_prob(x).view(*px_z.batch_shape[:2], -1) * model.scaling_factor
     kld = kl_divergence(qz_x, model.pz(*model.pz_params))
-    return (lpx_z.sum(-1) - kld.sum(-1)).mean(0).sum()
+    return -(lpx_z.sum(-1) - kld.sum(-1)).mean(0).sum()
 
 # helper to vectorise computation
 def compute_microbatch_split(x, K):
@@ -60,6 +93,21 @@ def iwae(model, x, K):
     lw = torch.cat([_iwae(model, _x, K) for _x in x.split(S)], 1)  # concat on batch
     return log_mean_exp(lw).sum()
 
+def _iwae_c(model, x, K):
+    """IWAE estimate for log p_\theta(x) -- fully vectorised."""
+    qz_x, px_z, zs = model(x, None, K)
+    lpz = model.pz(*model.pz_params).log_prob(zs).sum(-1)
+    lpx_z = px_z.log_prob(x).view(*px_z.batch_shape[:2], -1) * model.scaling_factor
+    lqz_x = qz_x.log_prob(zs).sum(-1)
+    return lpz + lpx_z.sum(-1) - lqz_x
+
+def iwae_c(model, x, K):
+    """Computes an importance-weighted ELBO estimate for log p_\theta(x)
+    Iterates over the batch as necessary.
+    """
+    S = compute_microbatch_split(x, K)
+    lw = torch.cat([_iwae_c(model, _x, K) for _x in x.split(S)], 1)  # concat on batch
+    return log_mean_exp(lw).sum()
 
 def _dreg(model, x, K):
     """DREG estimate for log p_\theta(x) -- fully vectorised."""

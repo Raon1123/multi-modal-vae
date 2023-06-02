@@ -85,12 +85,22 @@ def build_transform(configs):
 
     train_transform = []
     train_transform.append(transforms.ToTensor())
-    train_transform.append(transforms.Normalize(mean, std))
+    """
+    if dataset_name == 'MNIST':
+        train_transform.append(transforms.Normalize(0.5, 0.5))
+    else:
+        train_transform.append(transforms.Normalize(mean, std))
+    """
     train_transform = transforms.Compose(train_transform)
 
     test_transform = []
     test_transform.append(transforms.ToTensor())
-    test_transform.append(transforms.Normalize(mean, std))
+    """
+    if dataset_name == 'MNIST':
+        test_transform.append(transforms.Normalize(0.5, 0.5))
+    else:
+        test_transform.append(transforms.Normalize(mean, std))
+    """
     test_transform = transforms.Compose(test_transform)
 
     return train_transform, test_transform

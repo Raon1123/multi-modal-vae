@@ -87,7 +87,7 @@ def get_writer(config):
 
 def log_scalars(writer, train_loss, test_loss, epoch):
     if writer == 'wandb' and wandb is not None:
-        wandb.log({'train_loss': train_loss, 'test_loss': test_loss, 'epoch': epoch})
+        wandb.log({'train_loss': train_loss, 'test_loss': test_loss})
     else:
         writer.add_scalar('train_loss', train_loss, epoch)
         writer.add_scalar('test_loss', test_loss, epoch)
