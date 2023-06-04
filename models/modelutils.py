@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 
 from models.vae import MNISTVAE, CIFARVAE
 from models.cvae import MNISTCVAE, CIFARCVAE
@@ -45,8 +46,20 @@ def get_optimizer(model, config):
 
     return optimizer
 
+# get resnet18 classifier
 def get_classifier(config):
     model_path = config['MODEL']['classifier_path']
+    dataset_name = config['DATA']['name']
 
-    model = torch.load(model_path)
+    model = torch.hub.load('pytorch/vision:v0.6.0', 'resnet18', pretrained=False)
+    if dataset_name == 'CIFAR10':
+        model.fc = nn.Linear(512, 10)
+    elif dataset_name == 'CIFAR100':
+        model.fc = nn.Linear(512, 100)
+    elif dataset_name == 'MNIST':
+        model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        model.fc = nn.Linear(512, 10)
+
+    model.load_state_dict(torch.load(model_path))
+    print(f'loaded pretrained classifier weights from {model_path}')
     return model

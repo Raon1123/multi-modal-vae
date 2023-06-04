@@ -4,11 +4,29 @@ import torch.nn.functional as F
 
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
+from torch.optim.lr_scheduler import MultiStepLR
+from tqdm import tqdm
+import argparse
 
+# finetune the model
 
-# finetune the model on cifar 10
+def parse_args():
+    parser = argparse.ArgumentParser(description='Train classifier')
+    # general
+    parser.add_argument('--dataset',
+                        help="dataset",
+                        default='cifar10',
+                        type=str)
 
-def finetune(model, train_loader, optimizer, epoch, device, log_interval=100):
+    parser.add_argument('--scheduler',
+                        help="scheduler",
+                        default=1,
+                        type=int)
+    args = parser.parse_args()
+
+    return args
+
+def finetune(model, train_loader, optimizer, epoch, device):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device).long()
@@ -17,10 +35,6 @@ def finetune(model, train_loader, optimizer, epoch, device, log_interval=100):
         loss = F.cross_entropy(output, target)
         loss.backward()
         optimizer.step()
-        if batch_idx % log_interval == 0:
-            print('Train Epoch: {} [{}/{}]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                       loss.item()))
 
 
 def test_model(model, test_loader, device):
@@ -41,10 +55,11 @@ def test_model(model, test_loader, device):
         
 
 def main():
+    args = parse_args()
     # Training settings
     batch_size = 128
-    epochs = 10
-    lr = 0.01
+    epochs = 30
+    lr = 0.001
     momentum = 0.5
     seed = 1
 
@@ -55,35 +70,54 @@ def main():
 
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
 
-    train_dataset = datasets.CIFAR10('./data', train=True, download=True,
+    dataset_name = args.dataset
+    dataset_class = None
+    if dataset_name == 'cifar10':
+        dataset_class = datasets.CIFAR10
+    elif dataset_name == 'cifar100':
+        dataset_class = datasets.CIFAR100
+    elif dataset_name == 'mnist':
+        dataset_class = datasets.MNIST
+    train_dataset = dataset_class('./data', train=True, download=True,
                                         transform=transforms.Compose([
                                             transforms.ToTensor(),
-                                            transforms.Normalize((0.1307,), (0.3081,))
+                                            transforms.Normalize((0.5), (0.5))
                                         ]))
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, **kwargs)
 
-    test_dataset = datasets.CIFAR10('./data', train=False, transform=transforms.Compose([
+    test_dataset = dataset_class('./data', train=False, transform=transforms.Compose([
                                             transforms.ToTensor(),
-                                            transforms.Normalize((0.1307,), (0.3081,))
+                                            transforms.Normalize((0.5), (0.5))
                                         ]))
-    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, **kwargs)
+    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, **kwargs)
 
     # pretrained resnet18
     model = torch.hub.load('pytorch/vision:v0.6.0', 'resnet18', pretrained=True)
-    model.fc = nn.Linear(512, 10)
+    if dataset_name == 'cifar100':
+        model.fc = nn.Linear(512, 100)
+    else:
+        model.fc = nn.Linear(512, 10)
+    if dataset_name == 'mnist':
+        model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
     model.to(device)
 
-    optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    if args.scheduler:
+        scheduler = MultiStepLR(optimizer, milestones=[20], gamma=0.1)
 
     acc_list = []
 
-    for epoch in range(1, epochs + 1):
+    pbar = tqdm(range(1, epochs + 1))
+    for epoch in pbar:
         finetune(model, train_dataloader, optimizer, epoch, device)
         acc = test_model(model, test_dataloader, device)
         acc_list.append(acc)
+        if args.scheduler:
+            scheduler.step()
+        pbar.set_description(f'Epoch: {epoch}, Accuracy: {acc}')
 
     # save model
-    torch.save(model.state_dict(), 'pretrained_model.pt')
+    torch.save(model.state_dict(), f'resnet18_{dataset_name}_pretrained.pt')
 
     # print accuracy
     print(acc_list)

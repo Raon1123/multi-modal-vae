@@ -34,7 +34,6 @@ def cvae_objective_wrapper(model, data, K=1, aux_objective='cls_max', classifier
     x, c = data
     # elbo
     qz_x, px_z, _ = model(x, c, K)
-
     lpx_z = px_z.log_prob(x).view(*px_z.batch_shape[:2], -1) * model.scaling_factor
     kld = kl_divergence(qz_x, model.pz(*model.pz_params))
     elbo_loss = -(lpx_z.sum(-1) - kld.sum(-1)).mean(0).sum()
@@ -45,18 +44,21 @@ def cvae_objective_wrapper(model, data, K=1, aux_objective='cls_max', classifier
         samples = px_z.sample(torch.Size([K]))
         samples = samples.view(-1, *samples.size()[3:])
         
-        cls_output = classifier(samples)
-        logit = F.softmax(cls_output, dim=1)
+        with torch.no_grad():
+            cls_output = classifier(samples)
+            logit = F.softmax(cls_output, dim=1)
         if aux_objective=='cls_min': # cross entropy minimization
-            target = c.repeat(K)
+            target = c.repeat(K).repeat(K)
             aux_loss = aux_loss + F.cross_entropy(logit, target, reduction='mean')
         elif aux_objective=='cls_max': # cross entropy maximization
-            target = c.repeat(K)
+            target = c.repeat(K).repeat(K)
             aux_loss =  aux_loss - F.cross_entropy(logit, target, reduction='mean')
         elif aux_objective=='entropy': # entropy maximization
-            aux_loss = aux_loss + torch.sum(logit * torch.log(logit + 1e-4), dim=1).mean()
-        
+            min_val = torch.e * model.c_dim # minimum bound is -1/e*c_dim
+            aux_loss = aux_loss + min_val + torch.sum(logit * torch.log(logit + 1e-8), dim=1).mean()
+    
     total_loss = elbo_loss + aux_loss
+
     return total_loss
 
 def elbo(model, x, K=1, **args):

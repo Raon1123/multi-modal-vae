@@ -3,6 +3,7 @@ import yaml
 
 import numpy as np
 import torch
+from torch.optim.lr_scheduler import MultiStepLR
 import tqdm
 
 from mmdatasets.datautils import get_dataloader
@@ -42,14 +43,19 @@ def main(config):
     # Get data, optimizer, criteria
     train_loader, test_loader = get_dataloader(config)
     optimizer = get_optimizer(model, config)
+    
+    if 'schedules' in config['OPTIMIZER']:
+        scheduler = MultiStepLR(optimizer, milestones=config['OPTIMIZER']['schedules'], gamma=0.1)
+    else:
+        scheduler = None
+
     criteria, t_criteria = get_criteria(config)
     aux_objective = ''
     classifier = None
-    if model_type == 'cave':
+    if model_type == 'cvae':
         aux_objective = config['MODEL']['aux_objective']
-        if 'cls' in aux_objective:
-            classifier = get_classifier(config).to(device)
-            classifer.eval()
+        classifier = get_classifier(config).to(device)
+        classifier.eval()
 
     # logging
     log_path = config['LOGGING']['log_path']
@@ -60,7 +66,9 @@ def main(config):
     pbar = tqdm.tqdm(range(config['OPTIMIZER']['epochs']))
     for epoch in pbar:
         train_loss = epochs.train_epoch(train_loader, model, optimizer, criteria, device=device, 
-                                        model_type=model_type, aux_objective='entropy', classifier=None)
+                                        model_type=model_type, aux_objective=aux_objective, classifier=classifier)
+        if scheduler is not None:
+            scheduler.step()
         test_loss = epochs.test_epoch(test_loader, model, t_criteria, device=device)
         
         loggings.log_recon_analysis(model, test_loader, log_path, epoch, device=device)

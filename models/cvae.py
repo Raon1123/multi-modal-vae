@@ -61,10 +61,11 @@ class CVAE(nn.Module):
         z = qz_x.rsample(torch.Size([K]))
         
         if c is None: # for test set
-            c_extend = torch.zeros((K, x.size(0), self.c_dim), dtype=torch.float32, device=x.device)
+            c_extend = torch.zeros((K, x.size(0), self.c_dim), dtype=torch.float32, device=x.device)+1.0e-4
         else:
             c_vec = one_hot(c, self.c_dim)
             c_extend = c_vec.expand(K,-1,-1)
+        
         px_z = self.px_z(*self.decoder(z, c_extend))
         return qz_x, px_z, z
     
@@ -90,7 +91,7 @@ class CVAE(nn.Module):
             latents = qz_x.rsample()
 
             if c is None:
-                c = torch.zeros((latents.size(0), self.c_dim), dtype=torch.float32, device=x.device)
+                c = torch.zeros((latents.size(0), self.c_dim), dtype=torch.float32, device=x.device)+1.0e-4
             else:
                 c = one_hot(c, self.c_dim).to(latents.device)
             px_z = self.px_z(*self.decoder(latents, c))
@@ -258,7 +259,10 @@ class CIFARCondDecoder(nn.Module):
         layers = []
         for l_i in range(hidden_layers):
             channel = channels[l_i]
-            layers.append(nn.Conv2d(prev_channel, channel, 4, 2, 1, bias=True))
+            if l_i == 0:
+                layers.append(nn.ConvTranspose2d(prev_channel, channel, 4, 1, 0, bias=True))
+            else:
+                layers.append(nn.ConvTranspose2d(prev_channel, channel, 4, 2, 1, bias=True))
             if l_i + 1 == hidden_layers:
                 layers.append(nn.Sigmoid())
             else:
@@ -281,13 +285,9 @@ class CIFARCondDecoder(nn.Module):
         # decoder output (3, 32, 32)
 
     def forward(self, z, c):
-        #z = z.unsqueeze(-1).unsqueeze(-1)
-        #out = self.decoder(z.view(-1, *z.size()[-3:]))
-
-        import ipdb; ipdb.set_trace()
-
-        decoder_input = torch.cat((z, c), dim=1).unsqueeze(-1).unsqueeze(-1)
-        out = self.decoder(decoder_input.reshape(-1, *decoder_input.size()[-3:]))
+        cat_dim = 2 if z.dim()==3 else 1
+        decoder_input = torch.cat((z, c), dim=cat_dim).unsqueeze(-1).unsqueeze(-1)
+        out = self.decoder(decoder_input.view(-1, *decoder_input.size()[-3:]))
         out = out.view(*decoder_input.size()[:-3], *out.size()[1:])
 
         length_scale = torch.tensor(0.75).to(z.device)
@@ -301,8 +301,8 @@ class CIFARCVAE(CVAE):
             prior_dist=torch.distributions.Laplace,
             likelihood_dist=torch.distributions.Laplace,
             posterior_dist=torch.distributions.Laplace,
-            encoder=CIFARCondEncoder(params['latent_dim'], params['enc_channels']),
-            decoder=CIFARCondDecoder(params['latent_dim'], params['c_dim'], params['dec_channels']),
+            encoder=CIFARCondEncoder(params['latent_dim'], params['enc_hidden_layers'], params['enc_channels']),
+            decoder=CIFARCondDecoder(params['latent_dim'], params['c_dim'], params['dec_hidden_layers'], params['dec_channels']),
             params=params
         )
 

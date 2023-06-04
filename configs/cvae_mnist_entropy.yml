@@ -17,10 +17,11 @@ MODEL:
   learn_prior: True
   c_dim: 10
   aux_objective: 'entropy'
+  classifier_path: 'pretrained/resnet18_mnist_pretrained.pt'
   
 OPTIMIZER:
   name: Adam
-  epochs: 10
+  epochs: 30
   params:
     lr: 0.001
     weight_decay: 0.
