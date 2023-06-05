@@ -13,6 +13,7 @@ from utils.epochs import unpack_data
 try:
     import wandb
 except ImportError:
+    # If wandb is not installed, or not logined, disable it
     wandb = None
 
 def exp_str(config):
