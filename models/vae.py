@@ -146,7 +146,7 @@ class MNISTDecoder(nn.Module):
         d = torch.sigmoid(p.view(*p.size()[:-1], 1, 28, 28))
         d = d.clamp(1e-6, 1-1e-6)
 
-        return d, torch.tensor(0.75).to(z.device) # return mean and length scale
+        return d, torch.tensor(0.01).to(z.device) # return mean and length scale
     
 
 class MNISTVAE(VAE):
@@ -251,9 +251,12 @@ class CIFARDecoder(nn.Module):
 class CIFARVAE(VAE):
     def __init__(self, params, learn_prior=False) -> None:
         super(CIFARVAE, self).__init__(
-            prior_dist=torch.distributions.Laplace,
-            likelihood_dist=torch.distributions.Laplace,
-            posterior_dist=torch.distributions.Laplace,
+            #prior_dist=torch.distributions.Laplace,
+            #likelihood_dist=torch.distributions.Laplace,
+            #posterior_dist=torch.distributions.Laplace,
+            prior_dist=torch.distributions.normal.Normal,
+            likelihood_dist=torch.distributions.normal.Normal,
+            posterior_dist=torch.distributions.normal.Normal,
             encoder=CIFAREncoder(params['latent_dim']),
             decoder=CIFARDecoder(params['latent_dim']),
             params=params
