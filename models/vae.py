@@ -181,6 +181,8 @@ class MNISTVAE(VAE):
         s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
         logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), nrow=8)
 
+        return samples
+
     def reconstruct(self, x, run_path, epoch):
         recon = super(MNISTVAE, self).reconstruct(x[:8])
         comp = torch.cat([x[:8], recon]).data.cpu()
@@ -278,6 +280,8 @@ class CIFARVAE(VAE):
         s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
         logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), nrow=8)
         
+        return samples
+
     def reconstruct(self, x, run_path, epoch):
         recon = super(CIFARVAE, self).reconstruct(x[:8])
         comp = torch.cat([x[:8], recon]).data.cpu()

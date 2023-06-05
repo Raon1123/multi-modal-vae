@@ -205,7 +205,11 @@ class MNISTCVAE(CVAE):
 
         samples = samples.view(K, N, *samples.size()[1:]).transpose(0, 1)  # N x K x 1 x 28 x 28
         s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
-        logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), nrow=8)
+        logging.save_img(torch.stack(s), 
+                         '{}/gen_samples_{:03d}.png'.format(run_path, epoch), 
+                         nrow=8)
+
+        return samples, gen_c_idxs
 
     def reconstruct(self, x, run_path, epoch):
         recon = super(MNISTCVAE, self).reconstruct(x[:8])
@@ -336,6 +340,8 @@ class CIFARCVAE(CVAE):
         s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
         logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), nrow=8)
         
+        return samples, gen_c_idxs
+
     def reconstruct(self, x, run_path, epoch):
         recon = super(CIFARCVAE, self).reconstruct(x[:8])
         comp = torch.cat([x[:8], recon]).data.cpu()
