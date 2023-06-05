@@ -55,7 +55,7 @@ def cvae_objective_wrapper(model, data, K=1, aux_objective='cls_max', classifier
             aux_loss =  aux_loss - F.cross_entropy(logit, target, reduction='mean')
         elif aux_objective=='entropy': # entropy maximization
             min_val = torch.e * model.c_dim # minimum bound is -1/e*c_dim
-            aux_loss = aux_loss + min_val + torch.sum(logit * torch.log(logit + 1e-8), dim=1).mean()
+            aux_loss = aux_loss + min_val + torch.sum(logit * torch.log(logit + 1e-8), dim=1).mean() / model.c_dim
     
     total_loss = elbo_loss + aux_loss
 

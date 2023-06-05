@@ -6,7 +6,7 @@ DATA:
   name: MNIST
   data_path: './data'
   batch_size: 128
-  num_workers: 0
+  num_workers: 2
   pin_memory: True
 
 MODEL:
@@ -18,10 +18,11 @@ MODEL:
   
 OPTIMIZER:
   name: Adam
-  epochs: 10
+  epochs: 30
   params:
     lr: 0.001
     weight_decay: 0.
+  schedules: [20]
     
 LOGGING:
   logger: 'wandb'
