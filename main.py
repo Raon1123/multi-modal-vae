@@ -61,6 +61,14 @@ def main(config):
     # logging
     log_path = config['LOGGING']['log_path']
     save_path = config['LOGGING']['save_path']
+
+    exp_name = logging.exp_str(config)
+    save_path = os.path.join(save_path, exp_name)
+
+    # Create directories
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+    
     writer = logging.get_writer(config)
 
     # Train
@@ -72,19 +80,16 @@ def main(config):
             scheduler.step()
         test_loss = epochs.test_epoch(test_loader, model, t_criteria, device=device)
         
-        logging.log_recon_analysis(model, test_loader, log_path, epoch, device=device)
+        logging.log_recon_analysis(model, test_loader, save_path, epoch, device=device)
         logging.log_scalars(writer, train_loss, test_loss, epoch)
 
-        pbar.set_description(f'Epoch {epoch}: train loss {train_loss:.4f}, test loss {test_loss:.4f}')
+        pbar.set_description(f'Epoch {epoch+1}: train loss {train_loss:.4f}, test loss {test_loss:.4f}')
 
     # Save model
-    loggings.save_model(model, config)
+    logging.save_model(model, config)
 
     # Generate image
-    exp_name = logging.exp_str(config)
-    generate_path = os.path.join(save_path, exp_name)
-
-    model.generate(generate_path, epoch)
+    model.generate(save_path, epoch)
 
 
 if __name__ == '__main__':
