@@ -45,6 +45,11 @@ class CVAE(nn.Module):
 
         self.scaling_factor = 1.0
 
+        if 'c_mask' in params:
+            self.c_mask = params['c_mask']
+        else:
+            self.c_mask = 0
+
     @property
     def pz_params(self):
         return self._pz_params
@@ -61,10 +66,14 @@ class CVAE(nn.Module):
         z = qz_x.rsample(torch.Size([K]))
         
         if c is None: # for test set
-            c_extend = torch.zeros((K, x.size(0), self.c_dim), dtype=torch.float32, device=x.device)+1.0e-4
+            c_extend = torch.zeros((K, x.size(0), self.c_dim), dtype=torch.float32, device=x.device)
         else:
             c_vec = one_hot(c, self.c_dim)
             c_extend = c_vec.expand(K,-1,-1)
+            if self.c_mask > 0: # mask out some of the c_extend with given ratio c_mask
+                mask = torch.rand(c_extend.shape[:-1], dtype=torch.float32, device=x.device)
+                mask = mask > self.c_mask
+                c_extend = c_extend * mask.unsqueeze(-1)
         
         px_z = self.px_z(*self.decoder(z, c_extend))
         return qz_x, px_z, z
@@ -91,7 +100,7 @@ class CVAE(nn.Module):
             latents = qz_x.rsample()
 
             if c is None:
-                c = torch.zeros((latents.size(0), self.c_dim), dtype=torch.float32, device=x.device)+1.0e-4
+                c = torch.zeros((latents.size(0), self.c_dim), dtype=torch.float32, device=x.device)
             else:
                 c = one_hot(c, self.c_dim).to(latents.device)
             px_z = self.px_z(*self.decoder(latents, c))

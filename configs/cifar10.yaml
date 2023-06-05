@@ -20,7 +20,8 @@ MODEL:
   learn_prior: False
 OPTIMIZER:
   name: 'adam'
-  epochs: 10
+  epochs: 30
   params:
     lr: 1.0e-3
     weight_decay: 0
+  schedules: [20]
