@@ -330,7 +330,7 @@ class CIFARCVAE(CVAE):
     def reconstruct(self, x, run_path, epoch):
         recon = super(CIFARCVAE, self).reconstruct(x[:8])
         comp = torch.cat([x[:8], recon]).data.cpu()
-        logging.save_img(comp, '{}/recon_{:03d}.png'.format(run_path, epoch)
+        logging.save_img(comp, '{}/recon_{:03d}.png'.format(run_path, epoch))
 
     def analyse(self, x, run_path, epoch):
         z_emb, zsl, kls_df = super(CIFARCVAE, self).analyse(x, K=10)
