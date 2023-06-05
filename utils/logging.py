@@ -2,7 +2,7 @@ import os
 
 import torch
 from torch.utils.tensorboard import SummaryWriter
-
+import torchvision.utils as torch_utils
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
@@ -13,6 +13,7 @@ from utils.epochs import unpack_data
 try:
     import wandb
 except ImportError:
+    # If wandb is not installed, or not logined, disable it
     wandb = None
 
 def exp_str(config):
@@ -102,3 +103,10 @@ def save_model(model, config):
     save_path = os.path.join(save_dir, log_str + '.pt')
 
     torch.save(model.state_dict(), save_path)
+
+
+def save_img(img, file_name, n_row=-1):
+    if n_row > 0:
+        torch_utils.save_image(img, file_name, nrow=n_row)
+    else:
+        torch_utils.save_image(img, file_name)
