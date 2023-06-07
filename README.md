@@ -27,3 +27,8 @@ CIFAR10:
 ``` shell
 python main.py --config configs/cifar10.yaml
 ```
+
+Generate samples from trained model:
+``` shell
+python generate.py --config configs/mnist.yaml --model_path {path/to/model.pt} --num_samples 1000
+```

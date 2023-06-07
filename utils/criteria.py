@@ -21,6 +21,9 @@ def get_criteria(config):
     if model_name == 'vae':
         criteria = elbo
         t_criteria = iwae
+    elif model_name == 'vaevanilla':
+        criteria = elbo_vanilla
+        t_criteria = iwae_vanilla
     elif model_name == 'cvae':
         criteria = cvae_objective_wrapper
         t_criteria = iwae_c
@@ -28,6 +31,46 @@ def get_criteria(config):
         raise NotImplementedError('Model criteria not implemented.')
 
     return criteria, t_criteria
+
+# https://github.com/pytorch/examples/blob/main/vae/main.py
+def elbo_vanilla(model, x, K=1, **args):
+    x_hat, z, mu, logvar = model(x, K)
+    
+    x_expand = x.expand(x_hat.size(0), *x.size())
+    bce_loss = F.binary_cross_entropy(x_hat, x_expand, reduction='sum') * model.scaling_factor
+
+    kld_loss = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+
+    total_loss = (bce_loss + kld_loss) / x.size(0)
+    return total_loss
+
+def iwae_vanilla(model, x, K):
+    """Computes an importance-weighted ELBO estimate for log p_\theta(x)
+    Iterates over the batch as necessary.
+    """
+    S = compute_microbatch_split(x, K)
+
+    lw_list = []
+    for _x in x.split(S):
+        x_hat, zs, mu, logvar = model(_x, K)
+
+        lpz = model.pz(*model.pz_params).log_prob(zs).sum(-1)
+
+        _x_expand = _x.expand(x_hat.size(0), *_x.size())
+        lpx_z = F.binary_cross_entropy(x_hat, _x_expand, reduction='none') * model.scaling_factor
+        lpx_z = lpx_z.view(*zs.shape[:2], -1)
+
+        if isinstance(model.qz_x, torch.distributions.normal.Normal):
+            std = torch.exp(0.5 * logvar)
+        else:
+            std = logvar
+        qz_x = model.qz_x(mu, std)
+        lqz_x = qz_x.log_prob(zs).sum(-1)
+        lw_list.append(lpz + lpx_z.sum(-1) - lqz_x)
+
+    lw = torch.cat(lw_list, 1)  # concat on batch
+    #return log_mean_exp(lw).sum()
+    return log_mean_exp(lw).sum() / x.size(0)
 
 # aux_objective: auxiliary objective loss type. 'cls' for classification, 'entropy' for Shannon entropy
 def cvae_objective_wrapper(model, data, K=1, aux_objective='cls_max', classifier=None):
@@ -49,12 +92,12 @@ def cvae_objective_wrapper(model, data, K=1, aux_objective='cls_max', classifier
             logit = F.softmax(cls_output, dim=1)
         if aux_objective=='cls_min': # cross entropy minimization
             target = c.repeat(K).repeat(K)
-            aux_loss = aux_loss + F.cross_entropy(logit, target, reduction='mean')
+            aux_loss = aux_loss + F.cross_entropy(logit, target, reduction='sum')
         elif aux_objective=='cls_max': # cross entropy maximization
             target = c.repeat(K).repeat(K)
-            aux_loss =  aux_loss - F.cross_entropy(logit, target, reduction='mean')
+            aux_loss =  aux_loss - F.cross_entropy(logit, target, reduction='sum')
         elif aux_objective=='entropy': # entropy maximization
-            min_val = torch.e * model.c_dim # minimum bound is -1/e*c_dim
+            min_val = torch.e # minimum bound is -1/e*c_dim
             aux_loss = aux_loss + min_val + torch.sum(logit * torch.log(logit + 1e-8), dim=1).mean() / model.c_dim
     
     total_loss = elbo_loss + aux_loss

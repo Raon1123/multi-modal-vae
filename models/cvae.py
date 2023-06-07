@@ -170,7 +170,7 @@ class MNISTCondDecoder(nn.Module):
         d = torch.sigmoid(p.view(*p.size()[:-1], 1, 28, 28))
         d = d.clamp(1e-6, 1-1e-6)
 
-        return d, torch.tensor(0.75).to(z.device) # return mean and length scale
+        return d, torch.tensor(0.01).to(z.device) # return mean and length scale
     
 
 class MNISTCVAE(CVAE):
@@ -205,7 +205,7 @@ class MNISTCVAE(CVAE):
 
         samples = samples.view(K, N, *samples.size()[1:]).transpose(0, 1)  # N x K x 1 x 28 x 28
         s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
-        logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), nrow=8)
+        logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), n_row=8)
 
     def reconstruct(self, x, run_path, epoch):
         recon = super(MNISTCVAE, self).reconstruct(x[:8])
@@ -297,7 +297,7 @@ class CIFARCondDecoder(nn.Module):
         out = self.decoder(decoder_input.view(-1, *decoder_input.size()[-3:]))
         out = out.view(*decoder_input.size()[:-3], *out.size()[1:])
 
-        length_scale = torch.tensor(0.75).to(z.device)
+        length_scale = torch.tensor(0.01).to(z.device)
 
         return out, length_scale
 
@@ -334,7 +334,7 @@ class CIFARCVAE(CVAE):
 
         samples = samples.view(K, N, *samples.size()[1:]).transpose(0, 1)
         s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
-        logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), nrow=8)
+        logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), n_row=8)
         
     def reconstruct(self, x, run_path, epoch):
         recon = super(CIFARCVAE, self).reconstruct(x[:8])

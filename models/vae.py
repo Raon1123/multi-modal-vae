@@ -179,7 +179,7 @@ class MNISTVAE(VAE):
 
         samples = samples.view(K, N, *samples.size()[1:]).transpose(0, 1)  # N x K x 1 x 28 x 28
         s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
-        logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), nrow=8)
+        logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), n_row=8)
 
     def reconstruct(self, x, run_path, epoch):
         recon = super(MNISTVAE, self).reconstruct(x[:8])
@@ -241,7 +241,7 @@ class CIFARDecoder(nn.Module):
         out = self.decoder(z.view(-1, *z.size()[-3:]))
         out = out.view(*z.size()[:-3], *out.size()[1:])
 
-        length_scale = torch.tensor(0.75).to(z.device)
+        length_scale = torch.tensor(0.01).to(z.device)
 
         return out, length_scale
 
@@ -249,12 +249,12 @@ class CIFARDecoder(nn.Module):
 class CIFARVAE(VAE):
     def __init__(self, params, learn_prior=False) -> None:
         super(CIFARVAE, self).__init__(
-            #prior_dist=torch.distributions.Laplace,
-            #likelihood_dist=torch.distributions.Laplace,
-            #posterior_dist=torch.distributions.Laplace,
-            prior_dist=torch.distributions.normal.Normal,
-            likelihood_dist=torch.distributions.normal.Normal,
-            posterior_dist=torch.distributions.normal.Normal,
+            prior_dist=torch.distributions.Laplace,
+            likelihood_dist=torch.distributions.Laplace,
+            posterior_dist=torch.distributions.Laplace,
+            #prior_dist=torch.distributions.normal.Normal,
+            #likelihood_dist=torch.distributions.normal.Normal,
+            #posterior_dist=torch.distributions.normal.Normal,
             encoder=CIFAREncoder(params['latent_dim']),
             decoder=CIFARDecoder(params['latent_dim']),
             params=params
@@ -279,7 +279,7 @@ class CIFARVAE(VAE):
 
         samples = samples.view(K, N, *samples.size()[1:]).transpose(0, 1)
         s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
-        logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), nrow=8)
+        logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), n_row=8)
         
     def reconstruct(self, x, run_path, epoch):
         recon = super(CIFARVAE, self).reconstruct(x[:8])
