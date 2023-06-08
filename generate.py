@@ -11,6 +11,7 @@ from torchvision.utils import make_grid
 from mmdatasets.datautils import get_dataloader
 from models.modelutils import get_model, get_optimizer, get_classifier
 from utils.criteria import get_criteria
+from models.cvae import one_hot
 
 import utils.epochs as epochs
 import utils.logging as logging
@@ -30,8 +31,13 @@ def parse_args():
     parser.add_argument('--num_samples', type=int, default=1000, help='Number of samples to generate.')
     return parser.parse_args()
 
-def generate_data(model, z, ci):
-    x_hat = model.decoder(z)
+def generate_data(model, z, ci, model_name='VAE'):
+    if model_name == 'CVAE':
+        c_idxs = torch.zeros(z.size(0), dtype=torch.long, device=z.device) + ci
+        c = one_hot(c_idxs, c_dim=model.c_dim).unsqueeze(1)
+        x_hat = model.decoder(z, c)
+    else:
+        x_hat = model.decoder(z)
     x_hat = x_hat.view(-1, *x_hat.shape[-3:]).permute(0,2,3,1).cpu()
     y = torch.zeros(x_hat.size(0), dtype=torch.long) + ci
     return x_hat, y
@@ -68,12 +74,14 @@ def main(config, args):
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     
+    model_name = config['MODEL']['name']
     # calculate label-wise mean latent vectors
     n_class = 10
     if config['DATA']['name'] == 'CIFAR100':
         n_class = 100
     total_mu = {i:[] for i in range(n_class)}
     total_logvar = {i:[] for i in range(n_class)}
+
     pbar = tqdm.tqdm(train_loader, desc='calculating mean latent vectors')
     with torch.no_grad():
         for batch_input in pbar:
@@ -105,13 +113,13 @@ def main(config, args):
         if num_samples > 1000:
             zs = z.split(10)
             for sub_z in zs:
-                x_hat, y = generate_data(model, sub_z, ci)
+                x_hat, y = generate_data(model, sub_z, ci, model_name)
                 if config['DATA']['name'] == 'MNIST':
                     x_hat = x_hat.squeeze(-1)
                 gen_x.append(x_hat)
                 gen_y.append(y)
         else:
-            x_hat, y = generate_data(model, z, ci)
+            x_hat, y = generate_data(model, z, ci, model_name)
             if config['DATA']['name'] == 'MNIST':
                 x_hat = x_hat.squeeze(-1)
             gen_x.append(x_hat)

@@ -1,5 +1,5 @@
 seed: 42
-project: cvae
+project: vae_vanilla
 postfix: alpha
 
 DATA:
@@ -10,15 +10,11 @@ DATA:
   pin_memory: True
 
 MODEL:
-  name: CVAE
+  name: VAEVanilla
   pretrained: False
-  latent_dim: 128
+  latent_dim: 4
   hidden_layers: 2
   learn_prior: True
-  c_dim: 10
-  aux_objective: 'entropy'
-  classifier_path: 'pretrained/resnet18_mnist_pretrained.pt'
-  c_mask: 0.1
   
 OPTIMIZER:
   name: Adam
