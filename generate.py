@@ -137,6 +137,9 @@ def main(config, args):
 
         if config['DATA']['name'] == 'MNIST':
             xi = xi.unsqueeze(2)
+        else:
+            xi = xi.permute(0,1,4,2,3)
+        
         s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in xi]
         logging.save_img(torch.stack(s), img_path, n_row=4)
     
