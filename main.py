@@ -7,6 +7,8 @@ import torch
 from torch.optim.lr_scheduler import MultiStepLR
 import tqdm
 
+from torchvision.models.inception import inception_v3
+
 from mmdatasets.datautils import get_dataloader
 from models.modelutils import get_model, get_optimizer, get_classifier
 from utils.criteria import get_criteria
