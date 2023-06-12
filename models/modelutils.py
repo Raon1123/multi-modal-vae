@@ -1,9 +1,15 @@
 import torch
+<<<<<<< HEAD
 import torch.nn as nn
 
 from models.vae import MNISTVAE, CIFARVAE
 from models.cvae import MNISTCVAE, CIFARCVAE
 from models.vae_vanilla import MNISTVAEVanilla, CIFARVAEVanilla
+=======
+
+import models.vae as vae
+import models.mmvae as mmvae
+>>>>>>> 85b98ae1e474031f9bcc1311fc33bc35cf5c2b89
 
 def load_model(loading_path):
     model = torch.load(loading_path)
@@ -13,6 +19,7 @@ def load_model(loading_path):
 def get_model(config):
     model_configs = config['MODEL']
 
+<<<<<<< HEAD
     model_name_dict = {'CIFAR10VAE': CIFARVAE, 
                        'CIFAR100VAE': CIFARVAE, 
                        'MNISTVAEVanilla': MNISTVAEVanilla,
@@ -23,16 +30,31 @@ def get_model(config):
                        'CIFAR10CVAE': CIFARCVAE,
                        'CIFAR100CVAE': CIFARCVAE}
 
+=======
+>>>>>>> 85b98ae1e474031f9bcc1311fc33bc35cf5c2b89
     if model_configs['pretrained']:
         try:
             model = load_model(model_configs['pretrain_path'])
         except:
             raise ValueError('Pretrained model not found.')
     else:
+<<<<<<< HEAD
         model_name = model_configs['name']
         dataset_name = config['DATA']['name']
         model_class = model_name_dict[f"{dataset_name}{model_name}"]
         model = model_class(model_configs)
+=======
+        dataset_name = config['DATA']['name']
+        if dataset_name == 'MNIST':
+            model = vae.MNISTVAE(model_configs)
+        elif dataset_name == 'CIFAR10':
+            model = vae.CIFARVAE(model_configs)
+        elif dataset_name == 'CIFAR100':
+            model = vae.CIFARVAE(model_configs)
+        else:
+            raise NotImplementedError('Model not implemented.')
+
+>>>>>>> 85b98ae1e474031f9bcc1311fc33bc35cf5c2b89
     return model
 
 
@@ -50,6 +72,7 @@ def get_optimizer(model, config):
 
     return optimizer
 
+<<<<<<< HEAD
 # get resnet18 classifier
 def get_classifier(config):
     model_path = config['MODEL']['classifier_path']
@@ -67,3 +90,5 @@ def get_classifier(config):
     model.load_state_dict(torch.load(model_path))
     print(f'loaded pretrained classifier weights from {model_path}')
     return model
+=======
+>>>>>>> 85b98ae1e474031f9bcc1311fc33bc35cf5c2b89

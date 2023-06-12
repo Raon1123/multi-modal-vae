@@ -146,7 +146,11 @@ class MNISTDecoder(nn.Module):
         d = torch.sigmoid(p.view(*p.size()[:-1], 1, 28, 28))
         d = d.clamp(1e-6, 1-1e-6)
 
+<<<<<<< HEAD
         return d, torch.tensor(0.01).to(z.device) # return mean and length scale
+=======
+        return d, torch.tensor(0.75).to(z.device) # return mean and length scale
+>>>>>>> 85b98ae1e474031f9bcc1311fc33bc35cf5c2b89
     
 
 class MNISTVAE(VAE):
@@ -179,12 +183,22 @@ class MNISTVAE(VAE):
 
         samples = samples.view(K, N, *samples.size()[1:]).transpose(0, 1)  # N x K x 1 x 28 x 28
         s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
+<<<<<<< HEAD
         logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), n_row=8)
+=======
+        save_image(torch.stack(s),
+                   '{}/gen_samples_{:03d}.png'.format(run_path, epoch),
+                   nrow=int(np.sqrt(N)))
+>>>>>>> 85b98ae1e474031f9bcc1311fc33bc35cf5c2b89
 
     def reconstruct(self, x, run_path, epoch):
         recon = super(MNISTVAE, self).reconstruct(x[:8])
         comp = torch.cat([x[:8], recon]).data.cpu()
+<<<<<<< HEAD
         logging.save_img(comp, '{}/recon_{:03d}.png'.format(run_path, epoch))
+=======
+        save_image(comp, '{}/recon_{:03d}.png'.format(run_path, epoch))
+>>>>>>> 85b98ae1e474031f9bcc1311fc33bc35cf5c2b89
 
     def analyse(self, x, run_path, epoch):
         z_emb, zsl, kls_df = super(MNISTVAE, self).analyse(x, K=10)
@@ -241,7 +255,11 @@ class CIFARDecoder(nn.Module):
         out = self.decoder(z.view(-1, *z.size()[-3:]))
         out = out.view(*z.size()[:-3], *out.size()[1:])
 
+<<<<<<< HEAD
         length_scale = torch.tensor(0.01).to(z.device)
+=======
+        length_scale = torch.tensor(0.75).to(z.device)
+>>>>>>> 85b98ae1e474031f9bcc1311fc33bc35cf5c2b89
 
         return out, length_scale
 
@@ -252,9 +270,12 @@ class CIFARVAE(VAE):
             prior_dist=torch.distributions.Laplace,
             likelihood_dist=torch.distributions.Laplace,
             posterior_dist=torch.distributions.Laplace,
+<<<<<<< HEAD
             #prior_dist=torch.distributions.normal.Normal,
             #likelihood_dist=torch.distributions.normal.Normal,
             #posterior_dist=torch.distributions.normal.Normal,
+=======
+>>>>>>> 85b98ae1e474031f9bcc1311fc33bc35cf5c2b89
             encoder=CIFAREncoder(params['latent_dim']),
             decoder=CIFARDecoder(params['latent_dim']),
             params=params
@@ -279,12 +300,22 @@ class CIFARVAE(VAE):
 
         samples = samples.view(K, N, *samples.size()[1:]).transpose(0, 1)
         s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
+<<<<<<< HEAD
         logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), n_row=8)
+=======
+        save_image(torch.stack(s),
+                     '{}/gen_samples_{:03d}.png'.format(run_path, epoch),
+                        nrow=int(np.sqrt(N)))
+>>>>>>> 85b98ae1e474031f9bcc1311fc33bc35cf5c2b89
         
     def reconstruct(self, x, run_path, epoch):
         recon = super(CIFARVAE, self).reconstruct(x[:8])
         comp = torch.cat([x[:8], recon]).data.cpu()
+<<<<<<< HEAD
         logging.save_img(comp, '{}/recon_{:03d}.png'.format(run_path, epoch))
+=======
+        save_image(comp, '{}/recon_{:03d}.png'.format(run_path, epoch))
+>>>>>>> 85b98ae1e474031f9bcc1311fc33bc35cf5c2b89
 
     def analyse(self, x, run_path, epoch):
         z_emb, zsl, kls_df = super(CIFARVAE, self).analyse(x, K=10)

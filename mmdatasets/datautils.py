@@ -5,6 +5,11 @@ import torch
 from torch.utils.data import DataLoader, Dataset, Subset
 from torchvision import datasets, transforms
 
+<<<<<<< HEAD
+=======
+from timm.data.constants import \
+    IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD, IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD
+>>>>>>> 85b98ae1e474031f9bcc1311fc33bc35cf5c2b89
 
 def get_dataset(configs):
     data_config = configs['DATA']
@@ -41,7 +46,10 @@ def get_dataloader(configs):
     
     return train_loader, test_loader
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 85b98ae1e474031f9bcc1311fc33bc35cf5c2b89
 def rand_match_on_idx(l1, idx1, l2, idx2, max_d=10000, dm=10):
     """
     l*: sorted labels
@@ -57,7 +65,10 @@ def rand_match_on_idx(l1, idx1, l2, idx2, max_d=10000, dm=10):
             _idx2.append(l_idx2[torch.randperm(n)])
     return torch.cat(_idx1), torch.cat(_idx2)
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 85b98ae1e474031f9bcc1311fc33bc35cf5c2b89
 def get_mnist(data_path, train_transform, test_transform):
     train_dataset = datasets.MNIST(data_path, train=True, download=True,
                                         transform=train_transform)
@@ -65,7 +76,10 @@ def get_mnist(data_path, train_transform, test_transform):
                                         transform=test_transform)
     return train_dataset, test_dataset
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 85b98ae1e474031f9bcc1311fc33bc35cf5c2b89
 def get_cifar(data_path, n_class, train_transform, test_transform):
     if n_class == 10:
         train_dataset = datasets.CIFAR10(data_path, train=True, download=True,
@@ -79,14 +93,29 @@ def get_cifar(data_path, n_class, train_transform, test_transform):
                                             transform=test_transform)
     return train_dataset, test_dataset
 
+<<<<<<< HEAD
 
 def build_transform(configs):
     train_transform = []
     train_transform.append(transforms.ToTensor())
+=======
+def build_transform(configs):
+    dataset_name = configs['name']
+    mean = IMAGENET_DEFAULT_MEAN
+    std = IMAGENET_DEFAULT_STD
+
+    train_transform = []
+    train_transform.append(transforms.ToTensor())
+    train_transform.append(transforms.Normalize(mean, std))
+>>>>>>> 85b98ae1e474031f9bcc1311fc33bc35cf5c2b89
     train_transform = transforms.Compose(train_transform)
 
     test_transform = []
     test_transform.append(transforms.ToTensor())
+<<<<<<< HEAD
+=======
+    test_transform.append(transforms.Normalize(mean, std))
+>>>>>>> 85b98ae1e474031f9bcc1311fc33bc35cf5c2b89
     test_transform = transforms.Compose(test_transform)
 
     return train_transform, test_transform

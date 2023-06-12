@@ -7,5 +7,9 @@ six
 pandas
 umap-learn
 tensorboard
+<<<<<<< HEAD
+=======
+tensorboardX
+>>>>>>> 85b98ae1e474031f9bcc1311fc33bc35cf5c2b89
 seaborn
 scikit-image

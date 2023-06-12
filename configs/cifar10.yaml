@@ -5,23 +5,43 @@ LOGGING:
   logger: 'tb'
   log_path: './logs'
   save_path: './saves'
+<<<<<<< HEAD
 DATA:
   name: 'CIFAR10'
   data_path: data/cifar10
   batch_size: 128
+=======
+OPTIMIZER:
+  epochs: 100
+DATA:
+  name: 'CIFAR10'
+  data_path: data/cifar10
+  batch_size: 32
+>>>>>>> 85b98ae1e474031f9bcc1311fc33bc35cf5c2b89
   num_workers: 4
   pin_memory: True
 MODEL:
   name: VAE
   pretrained: False
   pretrain_path: ''
+<<<<<<< HEAD
   latent_dim: 128
+=======
+  latent_dim: 64
+>>>>>>> 85b98ae1e474031f9bcc1311fc33bc35cf5c2b89
   hidden_layers: 3
   learn_prior: False
 OPTIMIZER:
   name: 'adam'
+<<<<<<< HEAD
   epochs: 30
   params:
     lr: 1.0e-3
     weight_decay: 0
   schedules: [20]
+=======
+  epochs: 10
+  params:
+    lr: 1.0e-3
+    weight_decay: 0
+>>>>>>> 85b98ae1e474031f9bcc1311fc33bc35cf5c2b89
