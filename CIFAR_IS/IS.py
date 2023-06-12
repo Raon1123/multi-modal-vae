@@ -15,7 +15,8 @@ import tarfile
 
 import numpy as np
 from six.moves import urllib
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_eager_execution()
 import glob
 #from scipy.misc import imread, imresize
 import imageio
@@ -60,6 +61,7 @@ def main(args):
     
     #print("images.shape")
     #sprint(images.shape)
+    import ipdb;ipdb.set_trace()
     mean, std = get_inception_score(args, images)
     print('Inception mean: ', mean)
     print('Inception std: ', std)
@@ -179,8 +181,8 @@ def _init_inception():
     ops = pool3.graph.get_operations()
     for op_idx, op in enumerate(ops):
         for o in op.outputs:
-            shape = o.get_shape()
-            shape = [s.value for s in shape]
+            shape = o.shape
+            shape = list(shape)
             new_shape = []
             for j, s in enumerate(shape):
                 if s == 1 and j == 0:

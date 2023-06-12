@@ -80,6 +80,7 @@ def get_inception_score(args, images):
 
 def main(args):
   images = load_images(args, args.input_image_dir)
+  import ipdb;ipdb.set_trace()
   mean, std = get_inception_score(args, images)
   print('\nInception mean: ', mean)
   print('Inception std: ', std)

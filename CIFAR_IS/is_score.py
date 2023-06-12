@@ -2,7 +2,7 @@
 import numpy as np
 import cv2 as cv
 import glob as glob
-from IS import *
+from IS import main
 import argparse
 import os,sys
 
