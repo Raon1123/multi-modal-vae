@@ -1,4 +1,5 @@
-
+*.pt
+*.ckpt
 data/
 *.sh
 
