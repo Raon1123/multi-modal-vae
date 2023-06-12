@@ -105,8 +105,15 @@ def save_model(model, config):
     torch.save(model.state_dict(), save_path)
 
 
-def save_img(img, file_name, n_row=-1):
-    if n_row > 0:
-        torch_utils.save_image(img, file_name, nrow=n_row)
+def load_model(model, config):
+    save_dir = config['LOGGING']['save_path']
+    log_str = exp_str(config)
+    save_path = os.path.join(save_dir, log_str + '.pt')
+    model.load_state_dict(torch.load(save_path))
+
+
+def save_img(img, file_name, nrow=-1):
+    if nrow > 0:
+        torch_utils.save_image(img, file_name, nrow=nrow)
     else:
         torch_utils.save_image(img, file_name)

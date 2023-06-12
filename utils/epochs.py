@@ -37,6 +37,7 @@ def unpack_data(dataB, device='cuda', model_type='vae', is_train=True):
     else:
         raise RuntimeError('Invalid data format {} -- check your dataloader!'.format(type(dataB)))
 
+
 def train_epoch(train_loader, model, optimizer, objective, device='cpu', K=20, 
                 model_type='vae', aux_objective='entropy', classifier=None):
     model.train()

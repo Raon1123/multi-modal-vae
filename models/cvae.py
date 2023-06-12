@@ -222,6 +222,7 @@ class MNISTCVAE(CVAE):
         else:
             return samples, gen_c_idxs
 
+
     def reconstruct(self, x, run_path, epoch):
         recon = super().reconstruct(x[:8])
         comp = torch.cat([x[:8], recon]).data.cpu()
@@ -291,19 +292,6 @@ class CIFARCondDecoder(nn.Module):
                 layers.append(nn.ReLU(True))
             prev_channel = channel
         self.decoder = nn.Sequential(*layers)
-        """
-        # input shape (latent_dim, 1, 1)
-        self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(latent_dim, 128, 4, 1, 0, bias=True),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(128, 64, 4, 2, 1, bias=True),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(64, 32, 4, 2, 1, bias=True),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(32, 3, 4, 2, 1, bias=True),
-            nn.Sigmoid()
-        )
-        """
         # decoder output (3, 32, 32)
 
     def forward(self, z, c):
@@ -352,6 +340,8 @@ class CIFARCVAE(CVAE):
         else:
             return samples, gen_c_idxs
         
+        return samples, gen_c_idxs
+
     def reconstruct(self, x, run_path, epoch):
         recon = super(CIFARCVAE, self).reconstruct(x[:8])
         comp = torch.cat([x[:8], recon]).data.cpu()
