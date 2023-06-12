@@ -59,11 +59,18 @@ class CVAE(nn.Module):
         if self._qz_x_params is None:
             raise ValueError('qz_x parameters are not set.')
         return self._qz_x_params
-    
+
+    def reparameterize(self, mu, logvar, K=1):
+        if isinstance(self.qz_x, torch.distributions.normal.Normal):
+            std = torch.exp(0.5 * logvar)
+        else:
+            std = logvar
+        z = self.qz_x(mu, std).rsample(torch.Size([K]))
+        return z
+
     def forward(self, x, c, K=1):
-        self._qz_x_params = self.encoder(x)
-        qz_x = self.qz_x(*self.qz_x_params)
-        z = qz_x.rsample(torch.Size([K]))
+        mu, logvar = self.encoder(x)
+        z = self.reparameterize(mu, logvar, K)
         
         if c is None: # for test set
             c_extend = torch.zeros((K, x.size(0), self.c_dim), dtype=torch.float32, device=x.device)
@@ -75,43 +82,48 @@ class CVAE(nn.Module):
                 mask = mask > self.c_mask
                 c_extend = c_extend * mask.unsqueeze(-1)
         
-        px_z = self.px_z(*self.decoder(z, c_extend))
-        return qz_x, px_z, z
+        x_hat = self.decoder(z, c_extend)
+        return x_hat, z, mu, logvar
     
-    def generate(self, N, K):
+    def generate(self, N, c=None):
         self.eval()
         with torch.no_grad():
             pz = self.pz(*self.pz_params)
             latents = pz.rsample(torch.Size([N]))
 
-            # random sample c
-            c_idxs = torch.randint(0, self.c_dim, (N,))
-            c = one_hot(c_idxs, c_dim=self.c_dim).to(latents.device)
-            c = c.unsqueeze(1)
+            if c is None:
+                # random sample c
+                c_idxs = torch.randint(0, self.c_dim, (N,))
+                c = one_hot(c_idxs, c_dim=self.c_dim).to(latents.device)
+                c = c.unsqueeze(1)
+            else:
+                c_idxs = c
+                c = one_hot(c, c_dim=self.c_dim).to(latents.device)
 
-            px_z = self.px_z(*self.decoder(latents, c))
-            samples = px_z.sample(torch.Size([K]))
-        return samples.view(-1, *samples.size()[3:]), c_idxs
+            samples = self.decoder(latents, c)
+        return samples.view(-1, *samples.shape[-3:]), c_idxs
     
     def reconstruct(self, x, c=None):
         self.eval()
         with torch.no_grad():
-            qz_x = self.qz_x(*self.encoder(x))
-            latents = qz_x.rsample()
+            mu, logvar = self.encoder(x)
+            latents = self.reparameterize(mu, logvar)
 
             if c is None:
-                c = torch.zeros((latents.size(0), self.c_dim), dtype=torch.float32, device=x.device)
+                c = torch.zeros((x.size(0), self.c_dim), dtype=torch.float32, device=x.device)
             else:
                 c = one_hot(c, self.c_dim).to(latents.device)
-            px_z = self.px_z(*self.decoder(latents, c))
-            recon = px_z.mean
+            c = c.unsqueeze(0)
+            
+            recon = self.decoder(latents, c).view(-1, *x.shape[-3:])
         return recon
     
     def analyse(self, x, c=None, K=10):
         self.eval()
         with torch.no_grad():
-            qz_x, _, zs = self.forward(x, c, K)
+            x_hat, zs, mu, logvar = self.forward(x, c, K)
             pz = self.pz(*self.pz_params)
+            qz_x = self.qz_x(mu, logvar)
             zss = [pz.sample(torch.Size([K, x.size(0)])).view(-1, pz.batch_shape[-1]),
                    zs.view(-1, zs.size(-1))]
             zsl = [torch.zeros(zs.size(0)).fill_(i) for i, zs in enumerate(zss)]
@@ -170,8 +182,7 @@ class MNISTCondDecoder(nn.Module):
         d = torch.sigmoid(p.view(*p.size()[:-1], 1, 28, 28))
         d = d.clamp(1e-6, 1-1e-6)
 
-        return d, torch.tensor(0.75).to(z.device) # return mean and length scale
-    
+        return d
 
 class MNISTCVAE(CVAE):
     def __init__(self, params):
@@ -197,27 +208,28 @@ class MNISTCVAE(CVAE):
     def pz_params(self):
         return self._pz_params[0], F.softmax(self._pz_params[1], dim=1) * self._pz_params[1].size(-1) + 1e-6
     
-    def generate(self, run_path, epoch):
-        N, K = 64, 9
-        gen_out = super(MNISTCVAE, self).generate(N, K)
-        samples = gen_out[0].cpu()
-        gen_c_idxs = gen_out[1].cpu()
+    def generate(self, run_path, epoch, N=64, K=1, c=None, vis=True):
+        gen_out = super().generate(N, c)
+        samples = gen_out[0]
+        gen_c_idxs = gen_out[1]
 
-        samples = samples.view(K, N, *samples.size()[1:]).transpose(0, 1)  # N x K x 1 x 28 x 28
-        s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
-        logging.save_img(torch.stack(s), 
-                         '{}/gen_samples_{:03d}.png'.format(run_path, epoch), 
-                         nrow=8)
+        if vis:
+            samples = samples.cpu()
+            gen_c_idxs = gen_c_idxs.cpu()
+            samples = samples.view(K, N, *samples.size()[1:]).transpose(0, 1)  # N x K x 1 x 28 x 28
+            s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
+            logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), n_row=8)
+        else:
+            return samples, gen_c_idxs
 
-        return samples, gen_c_idxs
 
     def reconstruct(self, x, run_path, epoch):
-        recon = super(MNISTCVAE, self).reconstruct(x[:8])
+        recon = super().reconstruct(x[:8])
         comp = torch.cat([x[:8], recon]).data.cpu()
         logging.save_img(comp, '{}/recon_{:03d}.png'.format(run_path, epoch))
 
     def analyse(self, x, run_path, epoch):
-        z_emb, zsl, kls_df = super(MNISTCVAE, self).analyse(x, K=10)
+        z_emb, zsl, kls_df = super().analyse(x, K=10)
         labels = ['Prior', self.modelname.lower()]
         logging.plot_embeddings(z_emb, zsl, labels, '{}/emb_umap_{:03d}.png'.format(run_path, epoch))
         logging.plot_kls_df(kls_df, '{}/kldistance_{:03d}.png'.format(run_path, epoch))
@@ -280,19 +292,6 @@ class CIFARCondDecoder(nn.Module):
                 layers.append(nn.ReLU(True))
             prev_channel = channel
         self.decoder = nn.Sequential(*layers)
-        """
-        # input shape (latent_dim, 1, 1)
-        self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(latent_dim, 128, 4, 1, 0, bias=True),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(128, 64, 4, 2, 1, bias=True),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(64, 32, 4, 2, 1, bias=True),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(32, 3, 4, 2, 1, bias=True),
-            nn.Sigmoid()
-        )
-        """
         # decoder output (3, 32, 32)
 
     def forward(self, z, c):
@@ -300,10 +299,7 @@ class CIFARCondDecoder(nn.Module):
         decoder_input = torch.cat((z, c), dim=cat_dim).unsqueeze(-1).unsqueeze(-1)
         out = self.decoder(decoder_input.view(-1, *decoder_input.size()[-3:]))
         out = out.view(*decoder_input.size()[:-3], *out.size()[1:])
-
-        length_scale = torch.tensor(0.75).to(z.device)
-
-        return out, length_scale
+        return out
 
 
 class CIFARCVAE(CVAE):
@@ -330,15 +326,19 @@ class CIFARCVAE(CVAE):
     def pz_params(self):
         return self._pz_params[0], F.softmax(self._pz_params[1], dim=1) * self._pz_params[1].size(-1) + 1e-6
     
-    def generate(self, run_path, epoch):
-        N, K = 64, 9
-        gen_out = super(CIFARCVAE, self).generate(N, K)
-        samples = gen_out[0].cpu()
-        gen_c_idxs = gen_out[1].cpu()
-
-        samples = samples.view(K, N, *samples.size()[1:]).transpose(0, 1)
-        s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
-        logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), nrow=8)
+    def generate(self, run_path, epoch, N=64, K=1, c=None, vis=True):
+        gen_out = super().generate(N, c)
+        samples = gen_out[0]
+        gen_c_idxs = gen_out[1]
+        
+        if vis:
+            samples = samples.cpu()
+            gen_c_idxs = gen_c_idxs.cpu()
+            samples = samples.view(K, N, *samples.size()[1:]).transpose(0, 1)
+            s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
+            logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), n_row=8)
+        else:
+            return samples, gen_c_idxs
         
         return samples, gen_c_idxs
 
@@ -348,7 +348,7 @@ class CIFARCVAE(CVAE):
         logging.save_img(comp, '{}/recon_{:03d}.png'.format(run_path, epoch))
 
     def analyse(self, x, run_path, epoch):
-        z_emb, zsl, kls_df = super(CIFARCVAE, self).analyse(x, K=10)
+        z_emb, zsl, kls_df = super().analyse(x, K=10)
         labels = ['Prior', self.modelname.lower()]
         logging.plot_embeddings(z_emb, zsl, labels, '{}/emb_umap_{:03d}.png'.format(run_path, epoch))
         logging.plot_kls_df(kls_df, '{}/kldistance_{:03d}.png'.format(run_path, epoch))

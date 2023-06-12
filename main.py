@@ -39,7 +39,7 @@ def main(config):
 
     model = get_model(config)
     model.to(device)
-    model_type = 'vae' if config['MODEL']['name'] == 'VAE' else 'cvae'
+    model_type = config['MODEL']['name'].lower()
 
     # Get data, optimizer, criteria
     train_loader, test_loader = get_dataloader(config)
@@ -84,6 +84,8 @@ def main(config):
         logging.log_scalars(writer, train_loss, test_loss, epoch)
 
         pbar.set_description(f'Epoch {epoch+1}: train loss {train_loss:.4f}, test loss {test_loss:.4f}')
+
+        model.generate(save_path, epoch)
 
     # Save model
     logging.save_model(model, config)

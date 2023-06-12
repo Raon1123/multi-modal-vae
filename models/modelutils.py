@@ -3,6 +3,7 @@ import torch.nn as nn
 
 from models.vae import MNISTVAE, CIFARVAE
 from models.cvae import MNISTCVAE, CIFARCVAE
+from models.vae_vanilla import MNISTVAEVanilla, CIFARVAEVanilla
 
 def load_model(loading_path):
     model = torch.load(loading_path)
@@ -14,6 +15,9 @@ def get_model(config):
 
     model_name_dict = {'CIFAR10VAE': CIFARVAE, 
                        'CIFAR100VAE': CIFARVAE, 
+                       'MNISTVAEVanilla': MNISTVAEVanilla,
+                       'CIFAR10VAEVanilla': CIFARVAEVanilla, 
+                       'CIFAR100VAEVanilla': CIFARVAEVanilla,
                        'MNISTVAE': MNISTVAE,
                        'MNISTCVAE': MNISTCVAE,
                        'CIFAR10CVAE': CIFARCVAE,

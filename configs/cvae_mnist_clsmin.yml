@@ -1,6 +1,6 @@
 seed: 42
 project: cvae
-postfix: alpha_entropy
+postfix: alpha_clsmin
 
 DATA:
   name: MNIST
@@ -16,7 +16,7 @@ MODEL:
   hidden_layers: 2
   learn_prior: True
   c_dim: 10
-  aux_objective: 'entropy'
+  aux_objective: 'cls_min'
   classifier_path: 'pretrained/resnet18_mnist_pretrained.pt'
   c_mask: 0.1
   

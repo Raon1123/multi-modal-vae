@@ -27,7 +27,7 @@ def tensors_to_df(tensors, head=None, keys=None, ax_names=None):
         df.rename(columns={'level_0': head}, inplace=True)
     return df
 
-class VAE(nn.Module):
+class VAEVanilla(nn.Module):
     def __init__(self,
                  prior_dist,
                  likelihood_dist,
@@ -62,36 +62,44 @@ class VAE(nn.Module):
             raise ValueError('qz_x parameters are not set.')
         return self._qz_x_params
     
-    def forward(self, x, K=1):
-        self._qz_x_params = self.encoder(x)
-        qz_x = self.qz_x(*self.qz_x_params)
-        z = qz_x.rsample(torch.Size([K]))
-        px_z = self.px_z(*self.decoder(z))
-        return qz_x, px_z, z
+    def reparameterize(self, mu, logvar, K=1):
+        if isinstance(self.qz_x, torch.distributions.normal.Normal):
+            std = torch.exp(0.5 * logvar)
+        else:
+            std = logvar
+        z = self.qz_x(mu, std).rsample(torch.Size([K]))
+        return z
+
+    def forward(self, x, K=1, **args):
+        mu, logvar = self.encoder(x)
+        z = self.reparameterize(mu, logvar, K)
+        x_hat = self.decoder(z)
+        return x_hat, z, mu, logvar
     
-    def generate(self, N, K):
+    def generate(self, N):
         self.eval()
         with torch.no_grad():
             pz = self.pz(*self.pz_params)
             latents = pz.rsample(torch.Size([N]))
-            px_z = self.px_z(*self.decoder(latents))
-            samples = px_z.sample(torch.Size([K]))
-        return samples.view(-1, *samples.size()[3:])
+            samples = self.decoder(latents)
+        return samples.view(-1, *samples.shape[-3:])
     
     def reconstruct(self, x):
         self.eval()
         with torch.no_grad():
-            qz_x = self.qz_x(*self.encoder(x))
-            latents = qz_x.rsample()
-            px_z = self.px_z(*self.decoder(latents))
-            recon = px_z.mean
+            mu, logvar = self.encoder(x)
+            latents = self.reparameterize(mu, logvar)
+            #qz_x = self.qz_x(mu, logvar)
+            #latents = qz_x.rsample()
+            recon = self.decoder(latents).view(-1, *x.shape[-3:])
         return recon
     
     def analyse(self, x, K):
         self.eval()
         with torch.no_grad():
-            qz_x, _, zs = self.forward(x, K)
+            x_hat, zs, mu, logvar = self.forward(x, K)
             pz = self.pz(*self.pz_params)
+            qz_x = self.qz_x(mu, logvar)
             zss = [pz.sample(torch.Size([K, x.size(0)])).view(-1, pz.batch_shape[-1]),
                    zs.view(-1, zs.size(-1))]
             zsl = [torch.zeros(zs.size(0)).fill_(i) for i, zs in enumerate(zss)]
@@ -112,7 +120,7 @@ class VAE(nn.Module):
 
 class MNISTEncoder(nn.Module):
     def __init__(self, latent_dim, hidden_layers=1, hidden_dim=400) -> None:
-        super(MNISTEncoder, self).__init__()
+        super().__init__()
         
         modules = []
         modules.append(nn.Sequential(nn.Linear(784, hidden_dim), nn.ReLU(True)))
@@ -132,7 +140,7 @@ class MNISTEncoder(nn.Module):
 
 class MNISTDecoder(nn.Module):
     def __init__(self, latent_dim, hidden_layers, hidden_dim=400) -> None:
-        super(MNISTDecoder, self).__init__()
+        super().__init__()
 
         modules = []
         modules.append(nn.Sequential(nn.Linear(latent_dim, hidden_dim), nn.ReLU(True)))
@@ -145,13 +153,12 @@ class MNISTDecoder(nn.Module):
         p = self.fc(self.decoder(z))
         d = torch.sigmoid(p.view(*p.size()[:-1], 1, 28, 28))
         d = d.clamp(1e-6, 1-1e-6)
-
-        return d, torch.tensor(0.01).to(z.device) # return mean and length scale
+        return d
     
 
-class MNISTVAE(VAE):
+class MNISTVAEVanilla(VAEVanilla):
     def __init__(self, params):
-        super(MNISTVAE, self).__init__(
+        super().__init__(
             prior_dist=torch.distributions.Laplace,
             likelihood_dist=torch.distributions.Laplace,
             posterior_dist=torch.distributions.Laplace,
@@ -174,29 +181,26 @@ class MNISTVAE(VAE):
         return self._pz_params[0], F.softmax(self._pz_params[1], dim=1) * self._pz_params[1].size(-1) + 1e-6
     
     def generate(self, run_path, epoch):
-        N, K = 64, 9
-        samples = super(MNISTVAE, self).generate(N, K).cpu()
-
+        N, K = 64, 1
+        samples = super().generate(N).cpu()
         samples = samples.view(K, N, *samples.size()[1:]).transpose(0, 1)  # N x K x 1 x 28 x 28
         s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
         logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), n_row=8)
 
-        return samples
-
     def reconstruct(self, x, run_path, epoch):
-        recon = super(MNISTVAE, self).reconstruct(x[:8])
+        recon = super().reconstruct(x[:8])
         comp = torch.cat([x[:8], recon]).data.cpu()
         logging.save_img(comp, '{}/recon_{:03d}.png'.format(run_path, epoch))
 
     def analyse(self, x, run_path, epoch):
-        z_emb, zsl, kls_df = super(MNISTVAE, self).analyse(x, K=10)
+        z_emb, zsl, kls_df = super().analyse(x, K=10)
         labels = ['Prior', self.modelname.lower()]
         logging.plot_embeddings(z_emb, zsl, labels, '{}/emb_umap_{:03d}.png'.format(run_path, epoch))
         logging.plot_kls_df(kls_df, '{}/kldistance_{:03d}.png'.format(run_path, epoch))
 
 class CIFAREncoder(nn.Module):
     def __init__(self, latent_dim) -> None:
-        super(CIFAREncoder, self).__init__()
+        super().__init__()
 
         # input shape: 3 x 32 x 
         self.encoder = nn.Sequential(
@@ -217,13 +221,12 @@ class CIFAREncoder(nn.Module):
         mu = self.c1(enc).squeeze()
         logvar = self.c2(enc).squeeze()
         logvar = F.softmax(logvar, dim=-1) * logvar.size(-1) + 1e-6
-
         return mu, logvar
 
 
 class CIFARDecoder(nn.Module):
     def __init__(self, latent_dim) -> None:
-        super(CIFARDecoder, self).__init__()
+        super().__init__()
 
         # input shape (latent_dim, 1, 1)
         self.decoder = nn.Sequential(
@@ -242,15 +245,12 @@ class CIFARDecoder(nn.Module):
         z = z.unsqueeze(-1).unsqueeze(-1)
         out = self.decoder(z.view(-1, *z.size()[-3:]))
         out = out.view(*z.size()[:-3], *out.size()[1:])
-
-        length_scale = torch.tensor(0.01).to(z.device)
-
-        return out, length_scale
+        return out
 
 
-class CIFARVAE(VAE):
+class CIFARVAEVanilla(VAEVanilla):
     def __init__(self, params, learn_prior=False) -> None:
-        super(CIFARVAE, self).__init__(
+        super().__init__(
             prior_dist=torch.distributions.Laplace,
             likelihood_dist=torch.distributions.Laplace,
             posterior_dist=torch.distributions.Laplace,
@@ -276,22 +276,20 @@ class CIFARVAE(VAE):
         return self._pz_params[0], F.softmax(self._pz_params[1], dim=1) * self._pz_params[1].size(-1) + 1e-6
     
     def generate(self, run_path, epoch):
-        N, K = 64, 9
-        samples = super(CIFARVAE, self).generate(N, K).cpu()
+        N, K = 64, 1
+        samples = super().generate(N).cpu()
 
         samples = samples.view(K, N, *samples.size()[1:]).transpose(0, 1)
         s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
         logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), n_row=8)
         
-        return samples
-
     def reconstruct(self, x, run_path, epoch):
-        recon = super(CIFARVAE, self).reconstruct(x[:8])
+        recon = super().reconstruct(x[:8])
         comp = torch.cat([x[:8], recon]).data.cpu()
         logging.save_img(comp, '{}/recon_{:03d}.png'.format(run_path, epoch))
 
     def analyse(self, x, run_path, epoch):
-        z_emb, zsl, kls_df = super(CIFARVAE, self).analyse(x, K=10)
+        z_emb, zsl, kls_df = super().analyse(x, K=10)
         labels = ['Prior', self.modelname.lower()]
         logging.plot_embeddings(z_emb, zsl, labels, '{}/emb_umap_{:03d}.png'.format(run_path, epoch))
         logging.plot_kls_df(kls_df, '{}/kldistance_{:03d}.png'.format(run_path, epoch))
