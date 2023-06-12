@@ -9,6 +9,7 @@ In this project, we implement [Multi-Modal VAE](https://arxiv.org/abs/1911.03393
 - Install dependent packages
 ``` shell
 pip install -r requirements.txt
+```
 
 # How to run
 
@@ -25,4 +26,9 @@ python main.py --configs <config_path_here>
 CIFAR10:
 ``` shell
 python main.py --config configs/cifar10.yaml
+```
+
+Generate samples from trained model:
+``` shell
+python generate.py --config configs/mnist.yaml --model_path {path/to/model.pt} --num_samples 1000
 ```

@@ -1,5 +1,5 @@
 seed: 42
-project: vae
+project: vae_vanilla
 postfix: alpha
 
 DATA:
@@ -10,9 +10,9 @@ DATA:
   pin_memory: True
 
 MODEL:
-  name: VAE
+  name: VAEVanilla
   pretrained: False
-  latent_dim: 128
+  latent_dim: 4
   hidden_layers: 2
   learn_prior: True
   

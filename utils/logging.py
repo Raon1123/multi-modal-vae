@@ -2,7 +2,7 @@ import os
 
 import torch
 from torch.utils.tensorboard import SummaryWriter
-
+import torchvision.utils as torch_utils
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
@@ -13,6 +13,7 @@ from utils.epochs import unpack_data
 try:
     import wandb
 except ImportError:
+    # If wandb is not installed, or not logined, disable it
     wandb = None
 
 def exp_str(config):
@@ -87,7 +88,7 @@ def get_writer(config):
 
 def log_scalars(writer, train_loss, test_loss, epoch):
     if writer == 'wandb' and wandb is not None:
-        wandb.log({'train_loss': train_loss, 'test_loss': test_loss, 'epoch': epoch})
+        wandb.log({'train_loss': train_loss, 'test_loss': test_loss})
     else:
         writer.add_scalar('train_loss', train_loss, epoch)
         writer.add_scalar('test_loss', test_loss, epoch)
@@ -102,3 +103,17 @@ def save_model(model, config):
     save_path = os.path.join(save_dir, log_str + '.pt')
 
     torch.save(model.state_dict(), save_path)
+
+
+def load_model(model, config):
+    save_dir = config['LOGGING']['save_path']
+    log_str = exp_str(config)
+    save_path = os.path.join(save_dir, log_str + '.pt')
+    model.load_state_dict(torch.load(save_path))
+
+
+def save_img(img, file_name, nrow=-1):
+    if nrow > 0:
+        torch_utils.save_image(img, file_name, nrow=nrow)
+    else:
+        torch_utils.save_image(img, file_name)

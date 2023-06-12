@@ -1,5 +1,5 @@
 seed: 42
-project: vae
+project: vae_vanilla
 postfix: alpha
 LOGGING:
   logger: 'tb'
@@ -12,10 +12,10 @@ DATA:
   num_workers: 4
   pin_memory: True
 MODEL:
-  name: VAE
+  name: VAEVanilla
   pretrained: False
   pretrain_path: ''
-  latent_dim: 128
+  latent_dim: 48
   hidden_layers: 3
   learn_prior: True
 OPTIMIZER:

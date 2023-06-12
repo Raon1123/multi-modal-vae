@@ -1,21 +1,21 @@
 seed: 42
-project: vae
+project: vae_vanilla
 postfix: alpha
 LOGGING:
   logger: 'tb'
   log_path: './logs'
   save_path: './saves'
 DATA:
-  name: 'CIFAR10'
-  data_path: data/cifar10
+  name: 'CIFAR100'
+  data_path: data/cifar100
   batch_size: 128
   num_workers: 4
   pin_memory: True
 MODEL:
-  name: VAE
+  name: VAEVanilla
   pretrained: False
   pretrain_path: ''
-  latent_dim: 128
+  latent_dim: 64
   hidden_layers: 3
   learn_prior: True
 OPTIMIZER:

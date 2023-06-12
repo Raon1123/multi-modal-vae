@@ -5,8 +5,6 @@ import torch
 from torch.utils.data import DataLoader, Dataset, Subset
 from torchvision import datasets, transforms
 
-from timm.data.constants import \
-    IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD, IMAGENET_INCEPTION_MEAN, IMAGENET_INCEPTION_STD
 
 def get_dataset(configs):
     data_config = configs['DATA']
@@ -43,6 +41,7 @@ def get_dataloader(configs):
     
     return train_loader, test_loader
 
+
 def rand_match_on_idx(l1, idx1, l2, idx2, max_d=10000, dm=10):
     """
     l*: sorted labels
@@ -58,12 +57,14 @@ def rand_match_on_idx(l1, idx1, l2, idx2, max_d=10000, dm=10):
             _idx2.append(l_idx2[torch.randperm(n)])
     return torch.cat(_idx1), torch.cat(_idx2)
 
+
 def get_mnist(data_path, train_transform, test_transform):
     train_dataset = datasets.MNIST(data_path, train=True, download=True,
                                         transform=train_transform)
     test_dataset = datasets.MNIST(data_path, train=False, download=True,
                                         transform=test_transform)
     return train_dataset, test_dataset
+
 
 def get_cifar(data_path, n_class, train_transform, test_transform):
     if n_class == 10:
@@ -78,19 +79,14 @@ def get_cifar(data_path, n_class, train_transform, test_transform):
                                             transform=test_transform)
     return train_dataset, test_dataset
 
-def build_transform(configs):
-    dataset_name = configs['name']
-    mean = IMAGENET_DEFAULT_MEAN
-    std = IMAGENET_DEFAULT_STD
 
+def build_transform(configs):
     train_transform = []
     train_transform.append(transforms.ToTensor())
-    train_transform.append(transforms.Normalize(mean, std))
     train_transform = transforms.Compose(train_transform)
 
     test_transform = []
     test_transform.append(transforms.ToTensor())
-    test_transform.append(transforms.Normalize(mean, std))
     test_transform = transforms.Compose(test_transform)
 
     return train_transform, test_transform
