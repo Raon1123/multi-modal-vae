@@ -161,8 +161,7 @@ def get_activation_stats(model, loader, info_path, device):
 
         mu = np.mean(activations, axis=0)
         sigma = np.cov(activations, rowvar=False)
-        dic = {'mu': mu, 'sigma': sigma}
-        np.savez(info_path, sigma)
+        np.savez(info_path, mu=mu, sigma=sigma)
     return mu, sigma
 
 def calculate_fid(mu1, sigma1, mu2, sigma2, eps=1e-6):
@@ -202,7 +201,7 @@ def calculate_fid(mu1, sigma1, mu2, sigma2, eps=1e-6):
 
 def fid_score(config, train_loader, gen_loader, model, device):
     real_fid_info_path = f'fid_info_real_{config["DATA"]["name"]}.npz'
-    gen_fid_info_path = f'fid_info_gen_{config["DATA"]["name"]}.npz'
+    gen_fid_info_path = f'fid_info_gen_{config["MODEL"]["name"]}_{config["postfix"]}_{config["DATA"]["name"]}.npz'
     real_mu, real_sigma = get_activation_stats(model, train_loader, real_fid_info_path, device)
     gen_mu, gen_sigma = get_activation_stats(model, gen_loader, gen_fid_info_path, device)
 
