@@ -180,12 +180,13 @@ class MNISTVAEVanilla(VAEVanilla):
     def pz_params(self):
         return self._pz_params[0], F.softmax(self._pz_params[1], dim=1) * self._pz_params[1].size(-1) + 1e-6
     
-    def generate(self, run_path, epoch):
-        N, K = 64, 1
-        samples = super().generate(N).cpu()
-        samples = samples.view(K, N, *samples.size()[1:]).transpose(0, 1)  # N x K x 1 x 28 x 28
-        s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
-        logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), n_row=8)
+    def generate(self, N=64, epoch=0, run_path='./'):
+        K = 1
+        rowsamples = super().generate(N).cpu()
+        #samples = rowsamples.view(K, N, *rowsamples.size()[1:]).transpose(0, 1)  # N x K x 1 x 28 x 28
+        #s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
+        #logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), nrow=8)
+        return rowsamples
 
     def reconstruct(self, x, run_path, epoch):
         recon = super().reconstruct(x[:8])
@@ -275,14 +276,16 @@ class CIFARVAEVanilla(VAEVanilla):
     def pz_params(self):
         return self._pz_params[0], F.softmax(self._pz_params[1], dim=1) * self._pz_params[1].size(-1) + 1e-6
     
-    def generate(self, run_path, epoch):
-        N, K = 64, 1
-        samples = super().generate(N).cpu()
+    def generate(self, N=64, run_path='./', epoch=0):
+        K = 1
+        rowsamples = super().generate(N).cpu()
 
-        samples = samples.view(K, N, *samples.size()[1:]).transpose(0, 1)
-        s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
-        logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), n_row=8)
+        #samples = rowsamples.view(K, N, *rowsamples.size()[1:]).transpose(0, 1)
+        #s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
+        #logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), nrow=8)
         
+        return rowsamples
+
     def reconstruct(self, x, run_path, epoch):
         recon = super().reconstruct(x[:8])
         comp = torch.cat([x[:8], recon]).data.cpu()
