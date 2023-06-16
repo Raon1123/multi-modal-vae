@@ -94,11 +94,24 @@ def main(config, args):
                 total_mu[ci].append(mu[idx])
                 total_logvar[ci].append(logvar[idx])
     
+    latent_dim = config['MODEL']['latent_dim']
     for ci in range(n_class):
         total_mu[ci] = torch.cat(total_mu[ci], dim=0)
         total_logvar[ci] = torch.cat(total_logvar[ci], dim=0)
         total_mu[ci] = total_mu[ci].mean(dim=0)
-        total_logvar[ci] = total_logvar[ci].mean(dim=0)
+        #total_logvar[ci] = total_logvar[ci].mean(dim=0)
+        total_logvar[ci] = torch.ones(latent_dim, dtype=torch.float32, device=device) * 0.5
+
+    """
+    # uncondition
+    for ci in range(n_class):
+        if config['DATA']['name'] == 'MNIST':
+            total_mu[ci] = torch.zeros(4, dtype=torch.float32, device=device)
+            total_logvar[ci] = torch.ones(4, dtype=torch.float32, device=device) * 0.5
+        else:
+            total_mu[ci] = torch.zeros(48, dtype=torch.float32, device=device)
+            total_logvar[ci] = torch.ones(48, dtype=torch.float32, device=device) * 0.5
+    """
     
     # generate samples per class
     num_samples = args.num_samples
@@ -141,7 +154,7 @@ def main(config, args):
             xi = xi.permute(0,1,4,2,3)
         
         s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in xi]
-        logging.save_img(torch.stack(s), img_path, n_row=4)
+        logging.save_img(torch.stack(s), img_path, nrow=4)
     
     gen_x = torch.cat(gen_x, dim=0)
     gen_y = torch.cat(gen_y, dim=0)

@@ -298,7 +298,9 @@ if __name__ == '__main__':
     if not os.path.exists(f'inception_{dataset_name}.pt'):
         model = model.to(device)
         finetune_inception(config, train_loader, test_loader, model, device)
-    model.load_state_dict(torch.load(f'inception_{dataset_name}.pt'))
+
+    if eval_method != 'acc':
+        model.load_state_dict(torch.load(f'inception_{dataset_name}.pt'))
 
     model = model.to(device)
     model.eval()
