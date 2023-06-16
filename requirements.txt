@@ -1,0 +1,11 @@
+PyYAML
+numpy
+tqdm
+timm==0.9.2
+tensorboardX
+six
+pandas
+umap-learn
+tensorboard
+seaborn
+scikit-image

@@ -1,0 +1,34 @@
+seed: 42
+project: cvae
+postfix: alpha_entropy
+
+DATA:
+  name: MNIST
+  data_path: './data'
+  batch_size: 128
+  num_workers: 2
+  pin_memory: True
+
+MODEL:
+  name: CVAE
+  pretrained: False
+  latent_dim: 4
+  hidden_layers: 2
+  learn_prior: True
+  c_dim: 10
+  aux_objective: 'entropy'
+  classifier_path: 'pretrained/resnet18_mnist_pretrained.pt'
+  c_mask: 0.1
+  
+OPTIMIZER:
+  name: Adam
+  epochs: 30
+  params:
+    lr: 0.001
+    weight_decay: 0.
+  schedules: [20]
+    
+LOGGING:
+  logger: 'wandb'
+  log_path: './logs'
+  save_path: './saves'

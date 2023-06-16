@@ -1,0 +1,35 @@
+seed: 42
+project: cvae
+postfix: alpha_entropy
+LOGGING:
+  logger: 'tb'
+  log_path: './logs'
+  save_path: './saves'
+DATA:
+  name: 'CIFAR10'
+  data_path: data/cifar10
+  batch_size: 128
+  num_workers: 4
+  pin_memory: True
+MODEL:
+  name: CVAE
+  pretrained: False
+  pretrain_path: ''
+  latent_dim: 48
+  enc_hidden_layers: 3
+  dec_hidden_layers: 4
+  enc_channels: [32, 64, 128]
+  dec_channels: [128, 64, 32, 3]
+  learn_prior: True
+  c_dim: 10
+  aux_objective: 'entropy'
+  classifier_path: 'pretrained/resnet18_cifar10_pretrained.pt'
+  c_mask: 0.1
+
+OPTIMIZER:
+  name: 'adam'
+  epochs: 100
+  params:
+    lr: 1.0e-3
+    weight_decay: 0
+  schedules: [60,90]
