@@ -22,6 +22,6 @@ OPTIMIZER:
   name: 'adam'
   epochs: 100
   params:
-    lr: 1.0e-3
+    lr: 1.0e-4
     weight_decay: 0
   schedules: [60,90]

@@ -208,7 +208,7 @@ class MNISTCVAE(CVAE):
     def pz_params(self):
         return self._pz_params[0], F.softmax(self._pz_params[1], dim=1) * self._pz_params[1].size(-1) + 1e-6
     
-    def generate(self, run_path, epoch, N=64, K=1, c=None, vis=True):
+    def generate(self, run_path='./', epoch=0, N=64, K=1, c=None, vis=False):
         gen_out = super().generate(N, c)
         samples = gen_out[0]
         gen_c_idxs = gen_out[1]
@@ -218,9 +218,9 @@ class MNISTCVAE(CVAE):
             gen_c_idxs = gen_c_idxs.cpu()
             samples = samples.view(K, N, *samples.size()[1:]).transpose(0, 1)  # N x K x 1 x 28 x 28
             s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
-            logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), n_row=8)
-        else:
-            return samples, gen_c_idxs
+            logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), nrow=8)
+        
+        return samples, gen_c_idxs
 
 
     def reconstruct(self, x, run_path, epoch):
@@ -326,7 +326,7 @@ class CIFARCVAE(CVAE):
     def pz_params(self):
         return self._pz_params[0], F.softmax(self._pz_params[1], dim=1) * self._pz_params[1].size(-1) + 1e-6
     
-    def generate(self, run_path, epoch, N=64, K=1, c=None, vis=True):
+    def generate(self, run_path='./', epoch=0, N=64, K=1, c=None, vis=False):
         gen_out = super().generate(N, c)
         samples = gen_out[0]
         gen_c_idxs = gen_out[1]
@@ -336,9 +336,7 @@ class CIFARCVAE(CVAE):
             gen_c_idxs = gen_c_idxs.cpu()
             samples = samples.view(K, N, *samples.size()[1:]).transpose(0, 1)
             s = [make_grid(t, nrow=int(np.sqrt(K)), padding=0) for t in samples]
-            logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), n_row=8)
-        else:
-            return samples, gen_c_idxs
+            logging.save_img(torch.stack(s), '{}/gen_samples_{:03d}.png'.format(run_path, epoch), nrow=8)
         
         return samples, gen_c_idxs
 

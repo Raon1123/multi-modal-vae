@@ -87,14 +87,13 @@ def main(config):
 
         pbar.set_description(f'Epoch {epoch+1}: train loss {train_loss:.4f}, test loss {test_loss:.4f}')
 
-        model.generate(save_path, epoch)
+        model.generate(run_path=save_path, epoch=epoch)
 
     # Save model
     logging.save_model(model, config)
 
     # Generate image
-    model.generate(save_path, epoch)
-
+    model.generate(run_path=save_path, epoch=epoch)
 
 if __name__ == '__main__':
     args = parse_args()
